@@ -225,8 +225,8 @@ def save(is_final_result=False):
     if is_final_result == True and opt_cond == False:
         filename_save+="_error"
     if arg.save_by_vtk == True:
-        Mesh_x.save_by_vtk(filename_save+".vtk")
-    Mesh_x.save_by_torch(filename_save+".pt")
+        Mesh_x.save_as_vtk(filename_save+".vtk")
+    Mesh_x.save_as_torch(filename_save+".pt")
     print("save: t", t_good, "name", filename_save)
 #%%
 if arg.optimizer == 'FE_lbfgs':
