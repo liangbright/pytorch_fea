@@ -243,9 +243,10 @@ class LBFGS(Optimizer):
                  tolerance_change=1e-20,
                  history_size=100,
                  line_search_fn=None,
+                 strong_wolfe={"t_max":None, "verbose":False},
                  backtracking={"c":0.0001, "t_list": [1, 0.5, 0.1, 0.05, 0.01],
-                               "t_default":0.5, "t_default_init":"auto", "verbose":False},
-                 t_max=None):
+                               "t_default":0.5, "t_default_init":"auto", "verbose":False}
+                 ):
         if max_eval is None:
             max_eval = max_iter * 5 // 4
         defaults = dict(
@@ -257,7 +258,7 @@ class LBFGS(Optimizer):
             history_size=history_size,
             line_search_fn=line_search_fn,
             backtracking=backtracking.copy(),
-            t_max=t_max)
+            strong_wolfe=strong_wolfe.copy())
         super(LBFGS, self).__init__(params, defaults)
 
         if len(self.param_groups) != 1:
@@ -368,6 +369,12 @@ class LBFGS(Optimizer):
         #------------------
         return t_best, loss_best, flag
 
+    def set_strong_wolfe(self, t_max=None, verbose=None):
+        strong_wolfe = self.param_groups[0]['strong_wolfe']
+        strong_wolfe[t_max]=t_max
+        if verbose is not None:
+            strong_wolfe[verbose]=verbose
+
     def set_backtracking(self, t_list=None, t_default=None, t_default_init=None, c=None, verbose=None):
         backtracking = self.param_groups[0]['backtracking']
         if t_list is not None:
@@ -457,8 +464,8 @@ class LBFGS(Optimizer):
         tolerance_change = group['tolerance_change']
         line_search_fn = group['line_search_fn']
         history_size = group['history_size']
-        backtracking= group['backtracking']
-        t_maximum=group['t_max']
+        backtracking = group['backtracking']
+        strong_wolfe = group['strong_wolfe']
 
         state = self.state[self._params[0]]
 
@@ -598,12 +605,15 @@ class LBFGS(Optimizer):
                         obj_func, x_init, t, d, loss, flat_grad, gtd)
                     t=float(t)
                     if t > 1:
-                        print("~~~~~~~~~~~~strong_wolfe: t", t)
+                        if strong_wolfe['verbose'] == True:
+                            print("~~~~~~~~~~~~strong_wolfe: t", t)
+                        t_maximum=strong_wolfe['t_max']
                         if t_maximum is not None:
                             if t > t_maximum:
                                 t=min(t, t_maximum)
                                 loss=self.evaluate_loss(closure, t, d)
-                                print("~~~~~~~~~~~~reduce t to", t_maximum)
+                                if strong_wolfe['verbose'] == True:
+                                    print("~~~~~~~~~~~~reduce t to", t_maximum)
                     self._add_grad(t, d)
                     opt_cond = bool(flat_grad.abs().max() <= tolerance_grad)
                     #---------------------
