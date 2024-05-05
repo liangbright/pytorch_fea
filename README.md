@@ -6,3 +6,5 @@ I am working to make it useful for more applicaitons.
 The orignal code of the paper is available at https://github.com/liangbright/pytorch_fea_paper
 
 The preprint of our paper is available at https://www.biorxiv.org/content/10.1101/2023.03.27.533816v1
+
+PyTorch-FEA needs the mesh library at https://github.com/liangbright/mesh
