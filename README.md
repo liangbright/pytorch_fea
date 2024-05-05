@@ -8,3 +8,5 @@ The orignal code of the paper is available at https://github.com/liangbright/pyt
 The preprint of our paper is available at https://www.biorxiv.org/content/10.1101/2023.03.27.533816v1
 
 PyTorch-FEA needs the mesh library at https://github.com/liangbright/mesh
+
+example data: https://drive.google.com/file/d/1ByOjc9RVFEexLXB-u6Qd1SMAS-BKvW3g/view?usp=sharing
