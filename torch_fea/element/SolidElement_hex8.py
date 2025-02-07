@@ -241,6 +241,7 @@ def cal_F_tensor_X_cube(r, x, LX):
     #r.shape (K,3), K is the number of integration points
     #x.shape is (M,8,3)
     #special case: X is a cube with length=LX
+    #set LX (dX_dr=0.5*Lx) to negative or positive - depending on the order of nodes in an element
     dx_dr=cal_dh_dr(r, x)
     dX_dr=0.5*LX
     if isinstance(dX_dr, torch.Tensor):

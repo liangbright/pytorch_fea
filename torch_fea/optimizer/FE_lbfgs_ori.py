@@ -466,17 +466,23 @@ class LBFGS(Optimizer):
         history_size = group['history_size']
         backtracking = group['backtracking']
         strong_wolfe = group['strong_wolfe']
-
+        if line_search_fn is not None:
+            verbose = group[line_search_fn]['verbose'] 
+        else:
+            verbose=False
+        
         state = self.state[self._params[0]]
 
         # evaluate initial f(x) and df/dx
         orig_loss = closure()
         loss = float(orig_loss)
         if np.isnan(loss):
-            print("abort: loss is nan, optimizer will return 'nan'")
+            if verbose == True:
+                print("abort: loss is nan, optimizer will return 'nan'")
             return "nan"
         if np.isinf(loss):
-            print("abort: loss is inf, optimizer will return 'inf'")
+            if verbose == True:
+                print("abort: loss is inf, optimizer will return 'inf'")
             return "inf"
 
         current_evals = 1
@@ -487,7 +493,8 @@ class LBFGS(Optimizer):
 
         # optimal condition
         if opt_cond:
-            print("optimal condition1, break the current iteration")
+            if verbose == True:
+                print("optimal condition1, break the current iteration")
             return opt_cond
 
         # tensors cached in state (for tracing)
@@ -683,7 +690,8 @@ class LBFGS(Optimizer):
 
             # optimal condition
             if opt_cond:
-                print("optimal condition2, break the current iteration")
+                if verbose == True:
+                    print("optimal condition2, break the current iteration")
                 break
 
             # lack of progress

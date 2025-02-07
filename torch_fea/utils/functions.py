@@ -1,6 +1,9 @@
 import numpy as np
 import torch_scatter
 import torch
+from torch_fea.utils.polar_decomposition import *
+from torch_fea.utils.principal_stress import *
+from torch_fea.utils.principal_strain import *
 #%%
 def cal_attribute_on_node(n_nodes, element, element_attribute):
     #n_nodes: the number of nodes

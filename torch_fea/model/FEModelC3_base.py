@@ -67,8 +67,16 @@ def cal_sparse_stiffness_matrix(n_nodes, element, force_element, x):
         ColIndex=torch.cat(ColIndex, dim=0).view(1,-1)
         Index=torch.cat([RowIndex, ColIndex], dim=0)
         Value=torch.cat(Value, dim=0)
+        #-----------------
         H=torch.sparse_coo_tensor(Index, Value, (3*n_nodes,3*n_nodes))
-        H=H.coalesce()
+        #H will be used for solving a sparse linear system in cpu
+        #H=H.cpu() # move H to cpu and then run H.coalesce() in cpu to reduce GPU VRAM usage
+        H=H.coalesce()# it may cause GPU OOM, but it is slow in cpu
+        #-----------------
+        #torch_sparse also needs large VRAM
+        #Index, Value = torch_sparse.coalesce(Index, Value, 3*n_nodes, 3*n_nodes, op="add")
+        #H=torch.sparse_coo_tensor(Index, Value, (3*n_nodes,3*n_nodes))
+        #-----------------
     #t2=time.time()
     #print("cal_sparse_stiffness_matrix", t1-t0, t2-t1, tab)
     return H

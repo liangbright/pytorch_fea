@@ -53,6 +53,7 @@ Thumbs.db
 # files
 *.vtk
 *.pt
+*.zip
 
 # folders
 data/

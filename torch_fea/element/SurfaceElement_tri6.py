@@ -225,7 +225,7 @@ def cal_d_sf_dr(r):
     d_sf5_dr=torch.cat(cal_d_sf5_dr(r), dim=1)#shape is (K,2,1)
     d_sf_dr=[d_sf0_dr, d_sf1_dr, d_sf2_dr, d_sf3_dr, d_sf4_dr, d_sf5_dr]
     d_sf_dr=torch.cat(d_sf_dr, dim=2)
-    d_sf_dr=d_sf_dr.view(1,K,2,6)#4: sf0 to sf5
+    d_sf_dr=d_sf_dr.view(1,K,2,6)#6: sf0 to sf5
     return d_sf_dr
 #%%
 def interpolate(r, h):
