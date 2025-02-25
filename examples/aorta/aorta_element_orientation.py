@@ -1,5 +1,6 @@
 import torch
-
+from torch.linalg import cross
+from torch.linalg import vector_norm as norm
 def cal_element_orientation(node, element):
     if element.shape[1] == 4: #tet4
         raise ValueError("only support hex8")
@@ -24,11 +25,11 @@ def cal_element_orientation_hex8(node, element):
     x7=node[element[:,7]]
     a=(x1+x2+x5+x6)-(x0+x3+x4+x7)
     d=(x2+x3+x6+x7)-(x0+x1+x4+x5)
-    e1=a/torch.norm(a, p=2, dim=1, keepdim=True)
-    e3=torch.cross(a, d)
-    e3=e3/torch.norm(e3, p=2, dim=1, keepdim=True)
-    e2=torch.cross(e3, e1)
-    e2=e2/torch.norm(e2, p=2, dim=1, keepdim=True)
+    e1=a/norm(a, ord=2, dim=1, keepdim=True)
+    e3=cross(a, d)
+    e3=e3/norm(e3, ord=2, dim=1, keepdim=True)
+    e2=cross(e3, e1)
+    e2=e2/norm(e2, ord=2, dim=1, keepdim=True)
     e1=e1.view(-1,3,1)
     e2=e2.view(-1,3,1)
     e3=e3.view(-1,3,1)

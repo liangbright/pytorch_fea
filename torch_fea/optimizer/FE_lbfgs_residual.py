@@ -13,15 +13,15 @@ import torch
 
 from functools import reduce
 from torch.optim import Optimizer
-#from scipy.sparse import coo_matrix
 #https://github.com/haasad/PyPardisoProject
+#download pypardiso to the example folder
 from pypardiso import spsolve
 import numpy as np
 import time
 import scipy
 
 
-def linear_spsolve(H, r, verbose=False):
+def linear_spsolve_cpu(H, r, verbose=False):
     #H is the hessian/stiffness, a sparse matrix
     #q=inv(H)*r
     #q=solve(H, r)
@@ -37,6 +37,21 @@ def linear_spsolve(H, r, verbose=False):
         print("q", q)
     q=torch.tensor(q, dtype=r.dtype, device=r.device)
     return q
+
+def linear_spsolve_cuda(H, r, verbose=False):
+    #assume H is scipy.sparse.csr_matrix
+    #to use torch.sparse.spsolve: compile PyTorch with cuDSS
+    H=H.tocoo()
+    H=torch.sparse_csr_tensor(H.row, H.col, H.data, size=H.shape)
+    H=H.to(r.device)
+    q=torch.sparse.spsolve(H, r)
+    return q
+
+def linear_spsolve(H, r, use_cuda=False, verbose=False):
+    if use_cuda == True:
+        return linear_spsolve_cuda(H, r, verbose)
+    else:
+        return linear_spsolve_cpu(H, r, verbose)
 
 def update_invHd(s, y, ρ, d, invH0_diag, H0):
     #t0=time.time()

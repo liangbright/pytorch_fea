@@ -7,7 +7,7 @@ from torch_fea.model.FEModelC3_fiber import cal_pressure_force, cal_1pk_stress_f
 from torch_fea.utils.functions import cal_cauchy_stress_from_1pk_stress
 from aorta_element_orientation import cal_element_orientation
 #%%
-from scipy.sparse import csr_matrix #, coo_matrix
+from scipy.sparse import csr_matrix
 #from time import time
 def process_H(H, free_node):
     #t0=time()
@@ -21,7 +21,6 @@ def process_H(H, free_node):
     col=A.indices()[1].numpy()
     value=A.values().numpy()
     #t2=time()
-    #A=coo_matrix((value, (row, col)), shape=H.shape).tocsr()
     A=csr_matrix((value, (row, col)), shape=H.shape)
     #t3=time()
     A=A[idlist,:]
