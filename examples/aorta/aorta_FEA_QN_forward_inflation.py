@@ -3,9 +3,10 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 import sys
-sys.path.append("D:/MLFEA/code/pytorch_fea")
-sys.path.append("D:/MLFEA/code/pytorch_fea/examples/aorta")
-sys.path.append("D:/MLFEA/code/mesh")
+#note: change the following three lines if necessary
+sys.path.append("/data0/MLFEA/code/pytorch_fea")
+sys.path.append("/data0/MLFEA/code/pytorch_fea/examples/aorta")
+sys.path.append("/data0/MLFEA/code/mesh")
 import numpy as np
 from IPython import display
 import matplotlib.pyplot as plt
@@ -14,26 +15,20 @@ from torch.linalg import det
 from torch_fea.utils.functions import cal_attribute_on_node, cal_von_mises_stress
 from PolyhedronMesh import PolyhedronMesh
 import time
-#%%
-mat_str='1e8, 0, 1, 0, 0, 1e5'; mat_name=mat_str.split(',')[0]
-mat_model='GOH'
-px_pressure=16
-mesh_p0_str='E:/TAA_dataset10/paper/postR_sress_analysis/data/P10t3_solid_L1'
-mesh_px_str='E:/TAA_dataset10/paper/postR_sress_analysis/data/P10t3_solid_L1_p16_'+mat_name
-
-'''
+#%% use the example data
 all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt')['mat_str']
 matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt')['mean_mat_str']
-px_pressure=20
+px_pressure=16
 mat_model='GOH_Jv'
-#mat_str="1e5, 0, 1, 0, 0, 1e5"; mat_name='1e5'
+#mat_str='1e8, 0, 1, 0, 0, 1e5'; mat_name=mat_str.split(',')[0]
 mat_str=matMean; mat_name='matMean'
 shape_id='171' #[24,150,168,171,174,192,318]
-element_type='tet4'
-mesh_p0_str='../../../pytorch_fea/data/aorta/p0_'+str(shape_id)+'_solid' #'_'+element_type
+element_type='hex8'  #'hex8', 'tet10', 'tet4'
+mesh_p0_str='../../../pytorch_fea/data/aorta/p0_'+str(shape_id)+'_solid'
+if element_type != 'hex8':
+    mesh_p0_str=mesh_p0_str+'_'+element_type
 mesh_px_str=('../../../pytorch_fea/examples/aorta/result/inflation/'
              +'p0_'+str(shape_id)+'_solid_'+element_type+'_'+mat_model+'_'+mat_name+'_p'+str(px_pressure))
-'''
 #%%
 def get_must_points(delta):
     t=0
@@ -51,7 +46,7 @@ must_points=''
 #%%
 import argparse
 parser = argparse.ArgumentParser(description='Input Parameters:')
-parser.add_argument('--cuda', default=1, type=int)
+parser.add_argument('--cuda', default=0, type=int)
 parser.add_argument('--dtype', default="float64", type=str)
 parser.add_argument('--mesh_p0', default=mesh_p0_str, type=str)
 parser.add_argument('--mesh_px', default=mesh_px_str, type=str)
