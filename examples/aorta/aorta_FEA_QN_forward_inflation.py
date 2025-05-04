@@ -16,8 +16,8 @@ from torch_fea.utils.functions import cal_attribute_on_node, cal_von_mises_stres
 from PolyhedronMesh import PolyhedronMesh
 import time
 #%% use the example data
-all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt')['mat_str']
-matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt')['mean_mat_str']
+all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mat_str']
+matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mean_mat_str']
 px_pressure=16
 mat_model='GOH_Jv'
 #mat_str='1e8, 0, 1, 0, 0, 1e5'; mat_name=mat_str.split(',')[0]
@@ -56,7 +56,7 @@ parser.add_argument('--mat', default=mat_str, type=str)
 parser.add_argument('--mat_model', default=mat_model, type=str)
 parser.add_argument('--pressure', default=px_pressure, type=float)
 parser.add_argument('--optimizer', default='FE_lbfgs_residual', type=str)#FE_lbfgs, FE_lbfgs_residual
-parser.add_argument('--init_step_size', default=0.1, type=float)
+parser.add_argument('--init_step_size', default=0.01, type=float)
 parser.add_argument('--min_step_size', default=1e-5, type=float)
 parser.add_argument('--max_step_size', default=0.1, type=float)
 parser.add_argument('--reform_stiffness_interval', default=20, type=int)
