@@ -65,8 +65,7 @@ class AortaFEModel:
         self.state['element']=element
         self.state['node_X']=node_X
         self.state['boundary0']=boundary0
-        self.state['boundary1']=boundary1
-        self.state['element_orientation']=element_orientation
+        self.state['boundary1']=boundary1        
         if node_X is not None:
             free_node=np.arange(0, node_X.shape[0], 1)
         elif node_x is not None:
@@ -78,6 +77,7 @@ class AortaFEModel:
         self.state['free_node']=free_node #torch.tensor(free_node, dtype=torch.int64, device=device)
         self.state['pressure_surface']=pressure_surface
         self.state['material']=material
+        self.state['element_orientation']=element_orientation
         self.state['F0']=None
         self.cal_1pk_stress=cal_1pk_stress
         if mode == "inflation":
@@ -281,6 +281,7 @@ class AortaFEModel:
                                         state['material'],
                                         state['element_orientation'],
                                         self.cal_1pk_stress,
+                                        F0=state['F0'],
                                         return_F_S_W=True,
                                         return_stiffness=return_stiffness,
                                         return_force_at_element=True)

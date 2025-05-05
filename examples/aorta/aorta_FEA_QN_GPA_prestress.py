@@ -1,4 +1,6 @@
-#based on aorta_FEA_C3D8_SRI_quasi_newton_R1.py, QN=quasi_newton
+#this is an implementation of the GPA method:
+#A generalized prestressing algorithm for finite element simulations of preloaded geometries with application to the aorta
+#https://onlinelibrary.wiley.com/doi/full/10.1002/cnm.2632
 #%%
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
@@ -24,11 +26,9 @@ mat_model='GOH_Jv'
 mat_str=matMean; mat_name='matMean'
 shape_id='171' #[24,150,168,171,174,192,318]
 element_type='hex8'  #'hex8', 'tet10', 'tet4'
-mesh_p0_str='../../../pytorch_fea/data/aorta/p0_'+str(shape_id)+'_solid'
-if element_type != 'hex8':
-    mesh_p0_str=mesh_p0_str+'_'+element_type
-mesh_px_str=('../../../pytorch_fea/examples/aorta/result/inflation/'
-             +'p0_'+str(shape_id)+'_solid_'+element_type+'_'+mat_model+'_'+mat_name+'_p'+str(px_pressure))
+mesh_px_start_str=('../../../pytorch_fea/examples/aorta/result/inflation/'
+                   +'p0_'+str(shape_id)+'_solid_'+element_type+'_'+mat_model+'_'+mat_name+'_p'+str(px_pressure))
+mesh_px_end_str=mesh_px_start_str+'_GPA_prestress'
 #%%
 def get_must_points(delta):
     t=0
@@ -40,7 +40,7 @@ def get_must_points(delta):
         ts='{:.2f}'.format(t)
         t_str=t_str+","+ts
     return t_str
-#pressure=20, delta=0.05: 20 must points
+#when pressure=20, delta=0.05: 20 must points
 must_points=get_must_points(0.05)
 must_points=''
 #%%
@@ -48,17 +48,15 @@ import argparse
 parser = argparse.ArgumentParser(description='Input Parameters:')
 parser.add_argument('--cuda', default=0, type=int)
 parser.add_argument('--dtype', default="float64", type=str)
-parser.add_argument('--mesh_p0', default=mesh_p0_str, type=str)
-parser.add_argument('--mesh_px', default=mesh_px_str, type=str)
-parser.add_argument('--mesh_px_init', default='', type=str)
-parser.add_argument('--t_start_init', default=-1, type=float)
+parser.add_argument('--mesh_px_start', default=mesh_px_start_str, type=str)
+parser.add_argument('--mesh_px_end', default=mesh_px_end_str, type=str)
 parser.add_argument('--mat', default=mat_str, type=str)
 parser.add_argument('--mat_model', default=mat_model, type=str)
 parser.add_argument('--pressure', default=px_pressure, type=float)
 parser.add_argument('--optimizer', default='FE_lbfgs_residual', type=str)#FE_lbfgs, FE_lbfgs_residual
-parser.add_argument('--init_step_size', default=0.01, type=float)
+parser.add_argument('--init_step_size', default=0.001, type=float)
 parser.add_argument('--min_step_size', default=1e-5, type=float)
-parser.add_argument('--max_step_size', default=0.1, type=float)
+parser.add_argument('--max_step_size', default=0.001, type=float)
 parser.add_argument('--reform_stiffness_interval', default=20, type=int)
 parser.add_argument('--max_iter1', default=1e10, type=int)
 parser.add_argument('--max_iter2', default=200, type=int)
@@ -88,16 +86,16 @@ elif arg.dtype == "float32":
 else:
     raise ValueError("unkown dtype:"+arg.dtype)
 #%%
-Mesh_X=PolyhedronMesh()
-Mesh_X.load_from_torch(arg.mesh_p0+".pt")
-Node_X=Mesh_X.node.to(dtype).to(device)
-Element=Mesh_X.element.to(device)
+Mesh_x_start=PolyhedronMesh()
+Mesh_x_start.load_from_torch(arg.mesh_px_start+".pt")
+Node_x_start=Mesh_x_start.node.to(dtype).to(device)
+Element=Mesh_x_start.element.to(device)
 #%%
-boundary0=Mesh_X.node_set['boundary0']
-boundary1=Mesh_X.node_set['boundary1']
-Element_surface_pressure=Mesh_X.element_set['Element_surface_pressure']
+boundary0=Mesh_x_start.node_set['boundary0']
+boundary1=Mesh_x_start.node_set['boundary1']
+Element_surface_pressure=Mesh_x_start.element_set['Element_surface_pressure']
 try:
-    ElementOrientation=Mesh_X.element_data['orientation'].view(-1,3,3)
+    ElementOrientation=Mesh_x_start.element_data['orientation'].view(-1,3,3)
 except:
     ElementOrientation=None
 #%%
@@ -135,54 +133,13 @@ if 'GOH' in arg.mat_model:
         Mat[4]=np.pi*(Mat[4]/180)
         Mat=torch.tensor([Mat], dtype=dtype, device=device)
 #------------------
-aorta_model=AortaFEModel(None, Element, Node_X, boundary0, boundary1, Element_surface_pressure,
+aorta_model=AortaFEModel(None, Element, Node_x_start, boundary0, boundary1, Element_surface_pressure,
                          Mat, ElementOrientation, cal_1pk_stress, dtype, device, mode='inflation')
 pressure=arg.pressure
 #%%
 def loss1_function(force_int, force_ext):
     loss=((force_int-force_ext)**2).sum(dim=1).sqrt().mean()
     return loss
-#%%
-t_start=0
-if len(arg.mesh_px_init) > 0:
-    t0=time.time()
-    Mesh_x_init=PolyhedronMesh()
-    Mesh_x_init.load_from_torch(arg.mesh_px_init+".pt")
-    Node_x_init=Mesh_x_init.node.to(dtype).to(device)
-    u_field_init=Node_x_init-Node_X
-    u_field_init=u_field_init[aorta_model.state['free_node']]
-    print("initialize u_field with u_field_init")
-    aorta_model.state['u_field'].data=u_field_init.to(dtype).to(device)
-    out=aorta_model.cal_energy_and_force(pressure)
-    TPE1=out['TPE1']; TPE2=out['TPE2']; SE=out['SE']
-    force_int=out['force_int']; force_ext=out['force_ext']
-    F=out['F']; u_field=out['u_field']
-    loss1=loss1_function(force_int, force_ext)
-    print("Target TPE", float(TPE2), "loss1", loss1, "at pressure", pressure)
-    del out, loss1, TPE1, TPE2, SE, force_int, force_ext, F, u_field
-    del Mesh_x_init, Node_x_init, u_field_init
-    if 0 <= arg.t_start_init <= 1:
-        t_start=arg.t_start_init
-    else:
-        print("search for the optimal t_start of AutoStepper")
-        t_start_list=np.linspace(0, 1, int(1/arg.max_step_size))
-        loss_list=[]
-        for τ in t_start_list:
-            out=aorta_model.cal_energy_and_force(pressure*τ)
-            TPE1=out['TPE1']; TPE2=out['TPE2']; SE=out['SE']
-            force_int=out['force_int']; force_ext=out['force_ext']
-            F=out['F']; u_field=out['u_field']
-            loss=loss1_function(force_int, force_ext)
-            loss_list.append(float(loss))
-        idx_min=np.argmin(loss_list)
-        loss_min=loss_list[idx_min]
-        t_start=t_start_list[idx_min]
-        t_start=t_start-arg.init_step_size
-        t_start=max(min(t_start, 1), 0)
-        t1=time.time()
-        print("t_start", t_start, "loss", loss_min, ", time cost", t1-t0)
-        del out, TPE1, TPE2, SE, force_int, force_ext, F, u_field
-        del t_start_list, loss, loss_list, t1, t0
 #%%
 Rmax_list=[]
 loss1_list=[]
@@ -202,7 +159,7 @@ def save(is_final_result=False):
         state['idx_save']+=1
         state['t_save'].append(t_good)
     u_field=aorta_model.get_u_field()
-    Node_x=Node_X+u_field
+    Node_x=Node_x_start+u_field
     S=aorta_model.cal_stress('cauchy', create_graph=False, return_W=False)
     S_element=S.mean(dim=1)
     VM_element=cal_von_mises_stress(S_element)
@@ -224,9 +181,14 @@ def save(is_final_result=False):
     Mesh_x.mesh_data['t']=sim_t_list
     Mesh_x.mesh_data['time']=time_list
     Mesh_x.mesh_data['t_save']=state['t_save']
-    Mesh_x.node_set=Mesh_X.node_set
-    Mesh_x.element_set=Mesh_X.element_set
-    filename_save=arg.mesh_px
+    if 'SRI' in arg.mat_model:
+        Fd, Fv=aorta_model.cal_F_tensor()
+        Mesh_x.mesh_data['Fd']=Fd.detach().cpu()
+        Mesh_x.mesh_data['Fv']=Fv.detach().cpu()
+    else:
+        F=aorta_model.cal_F_tensor()
+        Mesh_x.mesh_data['F']=F.detach().cpu()    
+    filename_save=arg.mesh_px_end
     if is_final_result == False:
         filename_save+="_i"+str(state['idx_save'])
     if is_final_result == True and opt_cond == False:
@@ -244,14 +206,14 @@ else:
     raise ValueError('unkown optimizer '+arg.optimizer)
 optimizer = LBFGS([aorta_model.state['u_field']], lr=1, line_search_fn="backtracking",
                   tolerance_grad =1e-10, tolerance_change=0, history_size=10+arg.reform_stiffness_interval, max_iter=1)
-optimizer.set_backtracking(t_list=[1, 0.5, 0.3, 0.1, 0.05, 0.01], t_default=0.5, t_default_init=0.5)
+optimizer.set_backtracking(t_list=[0.1, 0.05, 0.01], t_default=0.1, t_default_init=0.1)
 optimizer.set_backtracking(c=0.5, verbose=False)
 #%%
 from torch_fea.optimizer.AutoStepper import AutoStepper
 must_points=[]
 if len(arg.must_points) > 0:
     must_points=[float(m) for m in arg.must_points.split(",")]
-auto_stepper=AutoStepper(t_start=t_start, t_end=1,
+auto_stepper=AutoStepper(t_start=0, t_end=1,
                          Δt_init=arg.init_step_size,
                          Δt_min=arg.min_step_size,
                          Δt_max=arg.max_step_size,
@@ -288,7 +250,10 @@ def plot_result():
     display.display(fig)
     plt.close(fig)
 #%%
-t_good=t_start
+t_good=0
+F0_dev_good=None
+F0_vol_good=None
+F0_good=None
 Ugood=aorta_model.state['u_field'].clone().detach()
 #save mesh at t=0
 if arg.save_all_t == True or len(must_points) !=0:
@@ -378,7 +343,8 @@ while iter1 <= max_iter1:
             error_flag=1
             print("iter2", iter2, "error: loss is nan or inf")
 
-        if (np.isnan(TPE) == True or np.isinf(TPE) == True or TPE > 0
+        if (np.isnan(TPE) == True or np.isinf(TPE) == True
+            #or TPE > 0 this is possible because u_field is close to 0
             or np.isnan(loss1) == True or np.isinf(loss1) == True
             or np.isnan(loss2) == True or np.isinf(loss2) == True):
             opt_cond=False
@@ -434,6 +400,10 @@ while iter1 <= max_iter1:
         Rmean=R.mean().item()
         Rmax=R.max().item()
         Rmax_list.append(Rmax)
+        
+        #---debug--------
+        #raise ValueError
+        #---------------
 
         opt_cond=False #opt_cond may be set to True by optimizer, so set it False
         if U_ratio < arg.U_ratio and loss1 < arg.loss1 and Rmax < arg.Rmax:
@@ -462,7 +432,22 @@ while iter1 <= max_iter1:
     #end of while True (iter2)
     if arg.plot == True:
         plot_result()
-
+    #---------------GPA key equations------------------------
+    if opt_cond is True:
+        if 'SRI' in arg.mat_model:
+            F0_dev_good, F0_vol_good=aorta_model.get_F0(clone=True, detach=True)
+            Fd, Fv=aorta_model.cal_F_tensor()
+            aorta_model.set_F0(Fd.detach(), Fv.detach())
+        else:
+            F0_good=aorta_model.get_F0(clone=True, detach=True)        
+            F=aorta_model.cal_F_tensor()
+            aorta_model.set_F0(F.detach())
+    else:
+        if 'SRI' in arg.mat_model:
+            aorta_model.set_F0(F0_dev_good, F0_vol_good)
+        else:
+            aorta_model.set_F0(F0_good)
+    #--------------------------------------------------------    
     if opt_cond is True:
         t_good=auto_stepper.t
         Ugood=aorta_model.state['u_field'].clone().detach()

@@ -183,7 +183,7 @@ def cal_F_tensor(node_x, element, node_X, n_integration_points, d_sf_dX, F0,
     else:
         F=cal_F_tensor_with_d_sf_dX_at_element(x, d_sf_dX)
     if F0 is not None:
-        #F0 is residual deformation
+        #F0 is residual/pre deformation
         F=matmul(F, F0)
     #F.shape (M,K,3,3)
     return F
@@ -210,7 +210,7 @@ def cal_cauchy_stress_force(node_x, element, d_sf_dX, material, cal_cauchy_stres
     #d_sf_dX.shape (M,K,3,A), K is the number of integration points
     F=cal_F_tensor_with_d_sf_dX_at_element(x, d_sf_dX)
     if F0 is not None:
-        #F0 is residual deformation
+        #F0 is residual/pre deformation
         F=matmul(F, F0)
     #-----------------------------------------------------------------------------
     #F.shape: (M,K,3,3)
@@ -253,7 +253,7 @@ def cal_cauchy_stress_force(node_x, element, d_sf_dX, material, cal_cauchy_stres
 def cal_cauchy_stress_force_inverse(d_sf_dx, det_dx_dr, n_nodes, element, F, material, cal_cauchy_stress, F0, return_S_W,
                                     cal_nodal_force_from_cauchy_stress):
     if F0 is not None:
-        #F0 is residual deformation
+        #F0 is residual/pre deformation
         F=matmul(F, F0)
     #-----------------------------------------------------------------------------
     S, W=cal_cauchy_stress(F, material, create_graph=True, return_W=True)
@@ -277,7 +277,7 @@ def cal_1pk_stress_force(node_x, element, d_sf_dX, det_dX_dr, material, cal_1pk_
     #d_sf_dX.shape (M,K,3,A)
     F=cal_F_tensor_with_d_sf_dX_at_element(x, d_sf_dX)
     if F0 is not None:
-        #F0 is residual deformation
+        #F0 is residual/pre deformation
         F=matmul(F, F0)
     #F.shape: (M,K,3,3))
     #material.shape: (M,?) or (1,?)
