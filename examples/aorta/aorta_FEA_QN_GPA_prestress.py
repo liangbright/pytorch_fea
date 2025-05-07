@@ -3,12 +3,12 @@
 #https://onlinelibrary.wiley.com/doi/full/10.1002/cnm.2632
 #%%
 import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 import sys
 #note: change the following three lines if necessary
-sys.path.append("/data0/MLFEA/code/pytorch_fea")
-sys.path.append("/data0/MLFEA/code/pytorch_fea/examples/aorta")
-sys.path.append("/data0/MLFEA/code/mesh")
+sys.path.append('/data0/MLFEA/code/pytorch_fea')
+sys.path.append('/data0/MLFEA/code/pytorch_fea/examples/aorta')
+sys.path.append('/data0/MLFEA/code/mesh')
 import numpy as np
 from IPython import display
 import matplotlib.pyplot as plt
@@ -33,12 +33,12 @@ mesh_px_end_str=mesh_px_start_str+'_GPA_prestress'
 def get_must_points(delta):
     t=0
     n=0
-    t_str="0"
+    t_str='0'
     while t<1:
         n=n+1
         t=delta*n
         ts='{:.2f}'.format(t)
-        t_str=t_str+","+ts
+        t_str=t_str+','+ts
     return t_str
 #when pressure=20, delta=0.05: 20 must points
 must_points=get_must_points(0.05)
@@ -47,7 +47,7 @@ must_points=''
 import argparse
 parser = argparse.ArgumentParser(description='Input Parameters:')
 parser.add_argument('--cuda', default=0, type=int)
-parser.add_argument('--dtype', default="float64", type=str)
+parser.add_argument('--dtype', default='float64', type=str)
 parser.add_argument('--mesh_px_start', default=mesh_px_start_str, type=str)
 parser.add_argument('--mesh_px_end', default=mesh_px_end_str, type=str)
 parser.add_argument('--mat', default=mat_str, type=str)
@@ -76,18 +76,18 @@ arg.plot = True if arg.plot == 'True' else False
 print(arg)
 #%%
 if arg.cuda >=0:
-    device=torch.device("cuda:"+str(arg.cuda))
+    device=torch.device('cuda:'+str(arg.cuda))
 else:
-    device=torch.device("cpu")
-if arg.dtype == "float64":
+    device=torch.device('cpu')
+if arg.dtype == 'float64':
     dtype=torch.float64
-elif arg.dtype == "float32":
+elif arg.dtype == 'float32':
     dtype=torch.float32
 else:
-    raise ValueError("unkown dtype:"+arg.dtype)
+    raise ValueError('unkown dtype:'+arg.dtype)
 #%%
 Mesh_x_start=PolyhedronMesh()
-Mesh_x_start.load_from_torch(arg.mesh_px_start+".pt")
+Mesh_x_start.load_from_torch(arg.mesh_px_start+'.pt')
 Node_x_start=Mesh_x_start.node.to(dtype).to(device)
 Element=Mesh_x_start.element.to(device)
 #%%
@@ -99,28 +99,28 @@ try:
 except:
     ElementOrientation=None
 #%%
-if "SRI" in arg.mat_model:
+if 'SRI' in arg.mat_model:
     from AortaFEModel_SRI import AortaFEModel, cal_potential_energy
 else:
     from AortaFEModel import AortaFEModel, cal_potential_energy
 #------------------
 #Jv, Fbar, and 3Field are the same mathematically, but have numerical differences
-if arg.mat_model == "GOH": #no SRI, volumetric locking
+if arg.mat_model == 'GOH': #no SRI, volumetric locking
     from torch_fea.material.Mat_GOH import cal_1pk_stress
-elif arg.mat_model == "GOH_SRI": # SRI (selective-reduced-integration) using one additional integration point
+elif arg.mat_model == 'GOH_SRI': # SRI (selective-reduced-integration) using one additional integration point
     from torch_fea.material.Mat_GOH_SRI import cal_1pk_stress
-elif arg.mat_model == "GOH_Fbar": # SRI used in some papers
+elif arg.mat_model == 'GOH_Fbar': # SRI used in some papers
     from torch_fea.material.Mat_GOH_Fbar import cal_1pk_stress
-elif arg.mat_model == "GOH_Jv": # SRI used in Abaqus according to its document
+elif arg.mat_model == 'GOH_Jv': # SRI used in Abaqus according to its document
     from torch_fea.material.Mat_GOH_Jv import cal_1pk_stress
-elif arg.mat_model == "GOH_3Field": # SRI used in FEBio according to its document and code
+elif arg.mat_model == 'GOH_3Field': # SRI used in FEBio according to its document and code
     from torch_fea.material.Mat_GOH_3Field import cal_1pk_stress
-elif arg.mat_model == "MooneyRivlin_SRI":
+elif arg.mat_model == 'MooneyRivlin_SRI':
     from torch_fea.material.Mat_MooneyRivlin_SRI import cal_1pk_stress_ori as cal_1pk_stress
-    Mat=[float(m) for m in arg.mat.split(",")]
+    Mat=[float(m) for m in arg.mat.split(',')]
     Mat=torch.tensor([Mat], dtype=dtype, device=device)
 else:
-    raise ValueError("this file does not support:"+arg.mat_model)
+    raise ValueError('this file does not support:'+arg.mat_model)
 #------------------
 if 'GOH' in arg.mat_model:
     if 'distribution' in arg.mat:
@@ -129,7 +129,7 @@ if 'GOH' in arg.mat_model:
         Mat[:,4]=np.pi*(Mat[:,4]/180)
         Mat=Mat.to(dtype=dtype, device=device)
     else:
-        Mat=[float(m) for m in arg.mat.split(",")]
+        Mat=[float(m) for m in arg.mat.split(',')]
         Mat[4]=np.pi*(Mat[4]/180)
         Mat=torch.tensor([Mat], dtype=dtype, device=device)
 #------------------
@@ -190,13 +190,13 @@ def save(is_final_result=False):
         Mesh_x.mesh_data['F']=F.detach().cpu()    
     filename_save=arg.mesh_px_end
     if is_final_result == False:
-        filename_save+="_i"+str(state['idx_save'])
+        filename_save+='_i'+str(state['idx_save'])
     if is_final_result == True and opt_cond == False:
-        filename_save+="_error"
+        filename_save+='_error'
     if arg.save_by_vtk == True:
-        Mesh_x.save_as_vtk(filename_save+".vtk")
-    Mesh_x.save_as_torch(filename_save+".pt")
-    print("save: t", t_good, "name", filename_save)
+        Mesh_x.save_as_vtk(filename_save+'.vtk')
+    Mesh_x.save_as_torch(filename_save+'.pt')
+    print('save: t', t_good, 'name', filename_save)
 #%%
 if arg.optimizer == 'FE_lbfgs':
     from torch_fea.optimizer.FE_lbfgs import LBFGS
@@ -204,7 +204,7 @@ elif arg.optimizer == 'FE_lbfgs_residual':
     from torch_fea.optimizer.FE_lbfgs_residual import LBFGS
 else:
     raise ValueError('unkown optimizer '+arg.optimizer)
-optimizer = LBFGS([aorta_model.state['u_field']], lr=1, line_search_fn="backtracking",
+optimizer = LBFGS([aorta_model.state['u_field']], lr=1, line_search_fn='backtracking',
                   tolerance_grad =1e-10, tolerance_change=0, history_size=10+arg.reform_stiffness_interval, max_iter=1)
 optimizer.set_backtracking(t_list=[0.1, 0.05, 0.01], t_default=0.1, t_default_init=0.1)
 optimizer.set_backtracking(c=0.5, verbose=False)
@@ -212,7 +212,7 @@ optimizer.set_backtracking(c=0.5, verbose=False)
 from torch_fea.optimizer.AutoStepper import AutoStepper
 must_points=[]
 if len(arg.must_points) > 0:
-    must_points=[float(m) for m in arg.must_points.split(",")]
+    must_points=[float(m) for m in arg.must_points.split(',')]
 auto_stepper=AutoStepper(t_start=0, t_end=1,
                          Δt_init=arg.init_step_size,
                          Δt_min=arg.min_step_size,
@@ -224,15 +224,15 @@ auto_stepper=AutoStepper(t_start=0, t_end=1,
 #%%
 def reform_stiffness(pressure_t):
     ta=time.time()
-    out=aorta_model.cal_energy_and_force(pressure_t, return_stiffness="sparse")
+    out=aorta_model.cal_energy_and_force(pressure_t, return_stiffness='sparse')
     H=out['H']
-    H=H.astype("float64")
-    #print("type(H)", type(H))
+    H=H.astype('float64')
+    #print('type(H)', type(H))
     #print('H (mean, max)', np.mean(np.abs(H.data)), np.max(np.abs(H.data)), 'nnz', H.nnz)
     optimizer.reset_state()
     optimizer.set_H0(H)
     tb=time.time()
-    #print("reform stiffness done:", tb-ta)
+    #print('reform stiffness done:', tb-ta)
     return tb-ta
 #%%
 def plot_result():
@@ -245,8 +245,8 @@ def plot_result():
     ax.plot(sim_t_list, -np.array(flag_list), 'b.')
     ax.set_ylim(0, 1)
     ax.grid(True)
-    ax.set_title("t "+ str(auto_stepper.t)+" iter2 "+str(iter2)+" rsi " +str(reform_stiffness_interval)
-                 +" time "+str(int(time_list[-1])))
+    ax.set_title('t '+ str(auto_stepper.t)+' iter2 '+str(iter2)+' rsi ' +str(reform_stiffness_interval)
+                 +' time '+str(int(time_list[-1])))
     display.display(fig)
     plt.close(fig)
 #%%
@@ -271,8 +271,8 @@ while iter1 <= max_iter1:
     iter1+=1
     auto_stepper.step()
     pressure_t=auto_stepper.t*pressure
-    closure_opt={"output":"TPE", "loss1_fn":loss1_function}
-    print("t", auto_stepper.t, ", Δt", auto_stepper.Δt, ", rsi", reform_stiffness_interval)
+    closure_opt={'output':'TPE', 'loss1_fn':loss1_function}
+    print('t', auto_stepper.t, ', Δt', auto_stepper.Δt, ', rsi', reform_stiffness_interval)
     opt_cond=False
     reform_stiffness_counter=0
     reform_stiffness_flag=0
@@ -289,33 +289,33 @@ while iter1 <= max_iter1:
             reform_stiffness_counter+=1
             reform_stiffness_flag=0
             reform_stiffness_iter2=iter2
-            #print("reform_stiffness done")
+            #print('reform_stiffness done')
         #-------------------------------------------------
-        def closure(output=closure_opt["output"], loss1_fn=closure_opt["loss1_fn"]):
+        def closure(output=closure_opt['output'], loss1_fn=closure_opt['loss1_fn']):
             out=aorta_model.cal_energy_and_force(pressure_t)
             TPE1=out['TPE1']; TPE2=out['TPE2']; SE=out['SE']
             force_int=out['force_int']; force_ext=out['force_ext']
             F=out['F']; u_field=out['u_field']
             loss1=loss1_fn(force_int, force_ext)
             loss2=cal_potential_energy(force_int-force_ext, u_field)
-            if output == "TPE":
+            if output == 'TPE':
                 loss=loss2
-            elif output == "loss1":
+            elif output == 'loss1':
                 loss=loss1
-            elif output == "R":
+            elif output == 'R':
                 R=force_int-force_ext
                 R=R[aorta_model.state['free_node']]
                 return R
-            else: #output is "loss2" or "all"
+            else: #output is 'loss2' or 'all'
                 loss=loss2
             if loss.requires_grad==True:
                 optimizer.zero_grad()
                 loss.backward()
-            if output == "TPE":
+            if output == 'TPE':
                 return TPE1
-            elif output == "loss1":
+            elif output == 'loss1':
                 return loss1
-            elif output == "loss2":
+            elif output == 'loss2':
                 return loss2
             else:
                 loss1=float(loss1)
@@ -338,10 +338,10 @@ while iter1 <= max_iter1:
         #--------------------------------------------------------
         #check for error
         error_flag=0
-        if opt_cond == "nan" or opt_cond == "inf":
+        if opt_cond == 'nan' or opt_cond == 'inf':
             opt_cond=False
             error_flag=1
-            print("iter2", iter2, "error: loss is nan or inf")
+            print('iter2', iter2, 'error: loss is nan or inf')
 
         if (np.isnan(TPE) == True or np.isinf(TPE) == True
             #or TPE > 0 this is possible because u_field is close to 0
@@ -349,18 +349,18 @@ while iter1 <= max_iter1:
             or np.isnan(loss2) == True or np.isinf(loss2) == True):
             opt_cond=False
             error_flag=1
-            print("iter2", iter2, "error: TPE", TPE, "loss1", loss1, "loss2", loss2)
-            print("iter2", iter2, "error: min(J)", float(J.min()), "max(J)", float(J.max()))
+            print('iter2', iter2, 'error: TPE', TPE, 'loss1', loss1, 'loss2', loss2)
+            print('iter2', iter2, 'error: min(J)', float(J.min()), 'max(J)', float(J.max()))
 
         J_error_counter=(J<=0).sum().item()
         if J_error_counter > 0:
             opt_cond=False
             error_flag=1
-            print("iter2", iter2, "error: sum(J<=0) =", J_error_counter)
+            print('iter2', iter2, 'error: sum(J<=0) =', J_error_counter)
 
         if error_flag==1:
             if iter2 == 1:
-                print("break: error at iter2 =", iter2)
+                print('break: error at iter2 =', iter2)
                 break
             if error_iter2 is None:
                 error_iter2=iter2
@@ -375,7 +375,7 @@ while iter1 <= max_iter1:
                     aorta_model.state['u_field'].data=U1
                     continue
                 else:
-                    print("break: error at iter2 =", iter2)
+                    print('break: error at iter2 =', iter2)
                     break
         #--------------------------------------------------------
         flag_list.append(flag_linesearch)
@@ -410,18 +410,18 @@ while iter1 <= max_iter1:
             opt_cond=True
 
         #if len(TPE_list) > 1:
-        #    print("iter2", iter2, "flag", flag_linesearch, "t", t_linesearch,
-        #          "Rmax", Rmax, "TPE_diff", TPE_list[-1]-TPE_list[-2])
+        #    print('iter2', iter2, 'flag', flag_linesearch, 't', t_linesearch,
+        #          'Rmax', Rmax, 'TPE_diff', TPE_list[-1]-TPE_list[-2])
 
         if iter2==1 or opt_cond is True:
-            print('iter2', iter2, 'Rmean', Rmean, 'Rmax', Rmax, "force_avg", float(force_avg), "U_ratio", U_ratio, )
-            print("  loss1", loss1, "loss2", loss2, "TPE", TPE, "max|J-1|", float((J-1).abs().max()))
-            print("  flag_linesearch", flag_linesearch, "t_linesearch", t_linesearch)
+            print('iter2', iter2, 'Rmean', Rmean, 'Rmax', Rmax, 'force_avg', float(force_avg), 'U_ratio', U_ratio, )
+            print('  loss1', loss1, 'loss2', loss2, 'TPE', TPE, 'max|J-1|', float((J-1).abs().max()))
+            print('  flag_linesearch', flag_linesearch, 't_linesearch', t_linesearch)
 
         if opt_cond is True:
-            print("opt_cond", opt_cond)
-            print("  t", auto_stepper.t, "iter2", iter2, "pressure_t", pressure_t, "time", time_list[-1])
-            print("  reform_stiffness_counter", reform_stiffness_counter, "tab", tab, "tab_total", tab_total)
+            print('opt_cond', opt_cond)
+            print('  t', auto_stepper.t, 'iter2', iter2, 'pressure_t', pressure_t, 'time', time_list[-1])
+            print('  reform_stiffness_counter', reform_stiffness_counter, 'tab', tab, 'tab_total', tab_total)
             break
 
         #flag_linesearch < 0 very often
@@ -457,19 +457,19 @@ while iter1 <= max_iter1:
         if arg.save_all_t == True or t_good in must_points:
             save(False)
     else:
-        print("opt_cond is False, try to adjust Δt, retry_counter", retry_counter)
+        print('opt_cond is False, try to adjust Δt, retry_counter', retry_counter)
         if retry_counter >= arg.max_retry:
-            print("abort: retry_counter >= max_retry")
+            print('abort: retry_counter >= max_retry')
             break
         if retry_counter==0:
             auto_stepper.initialize_retry()
-        auto_stepper.goback(t_good, "rand")
+        auto_stepper.goback(t_good, 'rand')
         aorta_model.state['u_field'].data=Ugood.clone().detach()
         retry_counter+=1
-        print("go back to the previous t", t_good, "with Δt", auto_stepper.Δt)
+        print('go back to the previous t', t_good, 'with Δt', auto_stepper.Δt)
 
     if auto_stepper.t == auto_stepper.t_end and opt_cond == True:
-        print("t is t_end and opt_cond is True, break")
+        print('t is t_end and opt_cond is True, break')
         break
 #%%
 #save the final result

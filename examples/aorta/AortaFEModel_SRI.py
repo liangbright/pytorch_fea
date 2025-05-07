@@ -25,12 +25,12 @@ def process_H(H, free_node):
 class AortaFEModel:
     def __init__(self, node_x, element, node_X, boundary0, boundary1, pressure_surface,
                  material, element_orientation, cal_1pk_stress, dtype, device, mode):
-        #mode: "inflation"   to get node_x,   given node_X and material
-        #      "inverse_p0"  to get node_X,   given node_x and material
-        #      "inverse_mat" to get material, given node_x and node_X
+        #mode: 'inflation'   to get node_x,   given node_X and material
+        #      'inverse_p0'  to get node_X,   given node_x and material
+        #      'inverse_mat' to get material, given node_x and node_X
         #This model works for SRI mat_model and hex8 elements
-        if mode != "inflation" and mode != "inverse_p0" and mode != "inverse_mat":
-            raise ValueError("mode is unknown")
+        if mode != 'inflation' and mode != 'inverse_p0' and mode != 'inverse_mat':
+            raise ValueError('mode is unknown')
         self.mode=mode
         self.dtype=dtype
         self.device=device
@@ -40,7 +40,7 @@ class AortaFEModel:
             self.state['n_integration_points_solid']=8
             self.state['n_integration_points_surface']=1
         else:
-            raise ValueError("only support hex8")
+            raise ValueError('only support hex8')
         self.state['node_x']=node_x
         self.state['element']=element
         self.state['node_X']=node_X
@@ -51,7 +51,7 @@ class AortaFEModel:
         elif node_x is not None:
             free_node=np.arange(0, node_x.shape[0], 1)
         else:
-            raise ValueError("node_X is None and node_x is None")
+            raise ValueError('node_X is None and node_x is None')
         free_node=np.setdiff1d(free_node, boundary0.view(-1).numpy())
         free_node=np.setdiff1d(free_node, boundary1.view(-1).numpy())
         self.state['free_node']=free_node #torch.tensor(free_node, dtype=torch.int64, device=device)
@@ -61,14 +61,14 @@ class AortaFEModel:
         self.state['F0_dev']=None
         self.state['F0_vol']=None
         self.cal_1pk_stress=cal_1pk_stress
-        if mode == "inflation":
+        if mode == 'inflation':
             self.initialize_for_inflation()
-        elif mode == "inverse_p0":
+        elif mode == 'inverse_p0':
             self.initialize_for_inverse_p0()
-        elif mode == "inverse_mat":
+        elif mode == 'inverse_mat':
             self.initialize_for_inverse_mat()
         else:
-            raise ValueError("mode is unknown")
+            raise ValueError('mode is unknown')
 
         if (node_x is not None) and (node_X is not None):
             #init u_field
@@ -84,19 +84,21 @@ class AortaFEModel:
         state['pressure_surface']=state['pressure_surface'].to(self.device)
         state['u_field']=torch.zeros((state['free_node'].shape[0],3),
                                      dtype=self.dtype, device=self.device, requires_grad=True)
-        state["disp0"]=0 #zero displacement of boundary0
-        state["disp1"]=0 #zero displacement of boundary1
+        state['disp0']=0 #zero displacement of boundary0
+        state['disp1']=0 #zero displacement of boundary1
         d_sf_dX_dev, dX_dr_dev, det_dX_dr_dev=cal_d_sf_dX_and_dX_dr(state['node_X'], state['element'], 8)
         d_sf_dX_vol, dX_dr_vol, det_dX_dr_vol=cal_d_sf_dX_and_dX_dr(state['node_X'], state['element'], 1)
         state['d_sf_dX_dev']=d_sf_dX_dev
         state['d_sf_dX_vol']=d_sf_dX_vol
         state['det_dX_dr_dev']=det_dX_dr_dev
         state['det_dX_dr_vol']=det_dX_dr_vol
-        state['element_orientation']=cal_element_orientation(state['node_X'], state['element'])
         mask=torch.ones_like(state['node_X'])
         mask[state['boundary0']]=0
         mask[state['boundary1']]=0
         state['mask']=mask
+        if state['element_orientation'] is None:
+            state['element_orientation']=cal_element_orientation(state['node_X'], state['element'])
+        state['element_orientation']=state['element_orientation'].to(self.dtype).to(self.device)
 
     def initialize_for_inverse_p0(self):
         state=self.state
@@ -106,8 +108,8 @@ class AortaFEModel:
         state['pressure_surface']=state['pressure_surface'].to(self.device)
         state['u_field']=torch.zeros((state['free_node'].shape[0],3),
                                      dtype=self.dtype, device=self.device, requires_grad=True)
-        state["disp0"]=0 #zero displacement of boundary0
-        state["disp1"]=0 #zero displacement of boundary1
+        state['disp0']=0 #zero displacement of boundary0
+        state['disp1']=0 #zero displacement of boundary1
         mask=torch.ones_like(state['node_x'])
         mask[state['boundary0']]=0
         mask[state['boundary1']]=0
@@ -121,8 +123,8 @@ class AortaFEModel:
         state['element']=state['element'].to(self.device)
         state['pressure_surface']=state['pressure_surface'].to(self.device)
         state['u_field']=None
-        state["disp0"]=0 #zero displacement of boundary0
-        state["disp1"]=0 #zero displacement of boundary1
+        state['disp0']=0 #zero displacement of boundary0
+        state['disp1']=0 #zero displacement of boundary1
         d_sf_dX_dev, dX_dr_dev, det_dX_dr_dev=cal_d_sf_dX_and_dX_dr(state['node_X'], state['element'], 8)
         d_sf_dX_vol, dX_dr_vol, det_dX_dr_vol=cal_d_sf_dX_and_dX_dr(state['node_X'], state['element'], 1)
         state['d_sf_dX_dev']=d_sf_dX_dev
@@ -139,34 +141,34 @@ class AortaFEModel:
         self.state['material']=material.to(self.dtype).to(self.device)
 
     def set_node_x(self, node_x):
-        if self.mode == "inverse_p0" or self.mode == "inverse_mat":
+        if self.mode == 'inverse_p0' or self.mode == 'inverse_mat':
             self.state['node_x']=node_x.to(self.dtype).to(self.device)
-        elif self.mode == "inflation":
-            raise ValueError("cannot set node_x when mode is inflation")
+        elif self.mode == 'inflation':
+            raise ValueError('cannot set node_x when mode is inflation')
         else:
-            raise ValueError("mode is unknown")
+            raise ValueError('mode is unknown')
 
     def set_node_X(self, node_X):
-        if self.mode == "inflation":
+        if self.mode == 'inflation':
             self.state['node_X']=node_X.to(self.dtype).to(self.device)
             self.initialize_for_inflation()
-        elif self.mode == "inverse_mat":
+        elif self.mode == 'inverse_mat':
             self.state['node_X']=node_X.to(self.dtype).to(self.device)
             self.initialize_for_inverse_mat()
-        elif self.mode == "inverse_p0":
-            raise ValueError("cannot set node_x when mode is inverse_p0")
+        elif self.mode == 'inverse_p0':
+            raise ValueError('cannot set node_x when mode is inverse_p0')
         else:
-            raise ValueError("mode is unknown")
+            raise ValueError('mode is unknown')
 
     def get_node_x(self, clone=True, detach=False):
-        if self.mode == "inverse_p0" or self.mode == "inverse_mat":
+        if self.mode == 'inverse_p0' or self.mode == 'inverse_mat':
             node_x=self.state['node_x']
-        elif self.mode == "inflation":
+        elif self.mode == 'inflation':
             node_X=self.state['node_X']
             u_field=self.get_u_field()
             node_x=node_X+u_field
         else:
-            raise ValueError("mode is unknown")
+            raise ValueError('mode is unknown')
         if clone==True:
             node_x=node_x.clone()
         if detach==True:
@@ -174,14 +176,14 @@ class AortaFEModel:
         return node_x
 
     def get_node_X(self, clone=True, detach=False):
-        if self.mode == "inflation" or self.mode == "inverse_mat":
+        if self.mode == 'inflation' or self.mode == 'inverse_mat':
             node_X=self.state['node_X']
-        elif self.mode == "inverse_p0":
+        elif self.mode == 'inverse_p0':
             node_x=self.state['node_x']
             u_field=self.get_u_field()
             node_X=node_x-u_field
         else:
-            raise ValueError("mode is unknown")
+            raise ValueError('mode is unknown')
         if clone==True:
             node_X=node_X.clone()
         if detach==True:
@@ -192,9 +194,9 @@ class AortaFEModel:
         #prescribed displacement of boundary0 and boundary1
         state=self.state
         if disp0 is not None:
-            state["disp0"]=disp0.to(self.dtype).to(self.device)
+            state['disp0']=disp0.to(self.dtype).to(self.device)
         if disp1 is not None:
-            state["disp1"]=disp1.to(self.dtype).to(self.device)
+            state['disp1']=disp1.to(self.dtype).to(self.device)
 
     def set_F0(self, F0_dev, F0_vol):
         #pre/residual deformation
@@ -221,7 +223,7 @@ class AortaFEModel:
 
     def set_u_field(self, u_field_full=None, u_field_free=None, data_copy_=False, requires_grad=True):
         if (u_field_full is not None) and (u_field_free is not None) :
-            raise ValueError("u_field_full is not None and u_field_free is not None")
+            raise ValueError('u_field_full is not None and u_field_free is not None')
         if u_field_full is not None:
             if data_copy_ == True:
                 self.state['u_field'].data.copy_(u_field_full.data[self.state['free_node']])
@@ -233,11 +235,11 @@ class AortaFEModel:
             else:
                 self.state['u_field']=u_field_free
         else:
-            raise ValueError("u_field_full and u_field_free are None")
+            raise ValueError('u_field_full and u_field_free are None')
         if requires_grad == True and self.state['u_field'].requires_grad == False:
             self.state['u_field'].requires_grad=True
         elif requires_grad == False and self.state['u_field'].requires_grad == True:
-            raise ValueError("requires_grad=False cannot be done because self.state['u_field'].requires_grad is True")
+            raise ValueError('requires_grad=False cannot be done because self.state["u_field"].requires_grad is True')
 
     def get_u_field(self):
         state=self.state
@@ -245,8 +247,8 @@ class AortaFEModel:
             u_field=torch.zeros_like(state['node_X'], dtype=self.dtype, device=self.device)
         elif state['node_x'] is not None:
             u_field=torch.zeros_like(state['node_x'], dtype=self.dtype, device=self.device)
-        u_field[state['boundary0']]=state["disp0"]
-        u_field[state['boundary1']]=state["disp1"]
+        u_field[state['boundary0']]=state['disp0']
+        u_field[state['boundary1']]=state['disp1']
         u_field[state['free_node']]=state['u_field']
         return u_field
 
@@ -281,7 +283,7 @@ class AortaFEModel:
             force_int, Fd, Fv, Sd, Sv, Wd, Wv, H_int, force_int_at_element=Output_int
             H_int=process_H(H_int, state['free_node'])
             H=H_int-H_ext
-        SE=cal_strain_energy(state['element_type'], Wd, Wv, state['det_dX_dr_dev'], state['det_dX_dr_vol'], reduction="sum")
+        SE=cal_strain_energy(state['element_type'], Wd, Wv, state['det_dX_dr_dev'], state['det_dX_dr_vol'], reduction='sum')
         force_ext1=force_ext*state['mask']
         #force_ext2 is exernal force on boundary0 and boundary1
         #it is passive: it will adjust itself to match force_int on boundary0 and boundary1
@@ -290,10 +292,10 @@ class AortaFEModel:
         TPE1=SE-cal_potential_energy(force_ext1, u_field)
         PE_passive=cal_potential_energy(force_ext2, u_field)
         TPE2=TPE1-PE_passive
-        out={"TPE1":TPE1, "TPE2":TPE2, "SE":SE,
-             "force_int":force_int, "force_ext":force_ext,
-             "force_int_at_element":force_int_at_element,
-             "F":Fv, "u_field":u_field}
+        out={'TPE1':TPE1, 'TPE2':TPE2, 'SE':SE,
+             'force_int':force_int, 'force_ext':force_ext,
+             'force_int_at_element':force_int_at_element,
+             'F':Fv, 'u_field':u_field}
         if return_stiffness is not None:
             out['H']=H
         return out
@@ -344,17 +346,17 @@ class AortaFEModel:
             force_int, Fd, Fv, Sd, Sv, Wd, Wv, H_int, force_int_at_element=Output_int
             H_int=process_H(H_int, state['free_node'])
             H=H_int-H_ext
-        SE=cal_strain_energy(state['element_type'], Wd, Wv, det_dX_dr_dev, det_dX_dr_vol, reduction="sum")
+        SE=cal_strain_energy(state['element_type'], Wd, Wv, det_dX_dr_dev, det_dX_dr_vol, reduction='sum')
         force_ext1=force_ext*state['mask']
         force_ext2=force_int*(1-state['mask'])
         force_ext=force_ext1+force_ext2
         TPE1=SE-cal_potential_energy(force_ext1, u_field)
         PE_passive=cal_potential_energy(force_ext2, u_field)
         TPE2=TPE1-PE_passive
-        out={"TPE1":TPE1, "TPE2":TPE2, "SE":SE,
-             "force_int":force_int, "force_ext":force_ext,
-             "force_int_at_element":force_int_at_element,
-             "F":Fv, "u_field":u_field}
+        out={'TPE1':TPE1, 'TPE2':TPE2, 'SE':SE,
+             'force_int':force_int, 'force_ext':force_ext,
+             'force_int_at_element':force_int_at_element,
+             'F':Fv, 'u_field':u_field}
         if return_stiffness is not None:
             out['H']=H
         return out
@@ -377,7 +379,7 @@ class AortaFEModel:
                                         return_F_S_W=True,
                                         return_force_at_element=True)
         force_int, Fd, Fv, Sd, Sv, Wd, Wv, force_int_at_element=output_int
-        SE=cal_strain_energy(state['element_type'], Wd, Wv, state['det_dX_dr_dev'], state['det_dX_dr_vol'], reduction="sum")
+        SE=cal_strain_energy(state['element_type'], Wd, Wv, state['det_dX_dr_dev'], state['det_dX_dr_vol'], reduction='sum')
         u_field=state['node_x']-state['node_X']
         force_ext1=force_ext*state['mask']
         force_ext2=force_int*(1-state['mask'])
@@ -385,62 +387,64 @@ class AortaFEModel:
         TPE1=SE-cal_potential_energy(force_ext1, u_field)
         PE_passive=cal_potential_energy(force_ext2, u_field)
         TPE2=TPE1-PE_passive
-        out={"TPE1":TPE1, "TPE2":TPE2, "SE":SE,
-             "force_int":force_int, "force_ext":force_ext,
-             "force_int_at_element":force_int_at_element,
-             "F":Fv}
+        out={'TPE1':TPE1, 'TPE2':TPE2, 'SE':SE,
+             'force_int':force_int, 'force_ext':force_ext,
+             'force_int_at_element':force_int_at_element,
+             'F':Fv}
         return out
 
     def cal_energy_and_force(self, pressure, return_stiffness=None):
-        if self.mode == "inflation":
+        if self.mode == 'inflation':
             return self.cal_energy_and_force_for_inflation(pressure, return_stiffness)
-        elif self.mode == "inverse_p0":
+        elif self.mode == 'inverse_p0':
             return self.cal_energy_and_force_for_inverse_p0(pressure, return_stiffness)
-        elif self.mode == "inverse_mat":
+        elif self.mode == 'inverse_mat':
             return self.cal_energy_and_force_for_inverse_mat(pressure)
         else:
-            raise ValueError("mode is unknown")
+            raise ValueError('mode is unknown')
 
     def cal_F_tensor(self):
         state=self.state
-        if self.mode == "inflation":
+        if self.mode == 'inflation':
             node_X=state['node_X']
             u_field=self.get_u_field()
             node_x=node_X+u_field
             Fd=cal_F_tensor(node_x, state['element'], node_X, 8, state['d_sf_dX_dev'], state['F0_dev'])
             Fv=cal_F_tensor(node_x, state['element'], node_X, 1, state['d_sf_dX_vol'], state['F0_vol'])
-        elif self.mode == "inverse_p0":
+        elif self.mode == 'inverse_p0':
             node_x=state['node_x']
             u_field=self.get_u_field()
             node_X=node_x-u_field
             Fd=cal_F_tensor(node_x, state['element'], node_X, 8, None, state['F0_dev'])
             Fv=cal_F_tensor(node_x, state['element'], node_X, 1, None, state['F0_vol'])
-        elif self.mode == "inverse_mat":
+        elif self.mode == 'inverse_mat':
             node_x=state['node_x']
             node_X=state['node_X']
             Fd=cal_F_tensor(node_x, state['element'], node_X, 8, state['d_sf_dX_dev'], state['F0_dev'])
             Fv=cal_F_tensor(node_x, state['element'], node_X, 1, state['d_sf_dX_vol'], state['F0_vol'])
         else:
-            raise ValueError("mode is unknown")
+            raise ValueError('mode is unknown')
         return Fd, Fv
 
     def cal_stress(self, stress, create_graph, return_W, local_sys=False):
         state=self.state
-        if self.mode == "inflation":
+        if self.mode == 'inflation':
             node_X=state['node_X']
             u_field=self.get_u_field()
             node_x=node_X+u_field
-        elif self.mode == "inverse_p0":
+            orientation=self.state['element_orientation']
+        elif self.mode == 'inverse_p0':
             node_x=state['node_x']
             u_field=self.get_u_field()
             node_X=node_x-u_field
-        elif self.mode == "inverse_mat":
+            orientation=cal_element_orientation(node_X, state['element'])
+        elif self.mode == 'inverse_mat':
             node_x=state['node_x']
             node_X=state['node_X']
+            orientation=self.state['element_orientation']
         else:
-            raise ValueError("mode is unknown")
-        Fd, Fv=self.cal_F_tensor()
-        orientation=cal_element_orientation(node_X, state['element'])
+            raise ValueError('mode is unknown')
+        Fd, Fv=self.cal_F_tensor()        
         Sd, Sv, Wd, Wv=self.cal_1pk_stress(Fd, Fv, state['material'], orientation,
                                            create_graph=create_graph, return_W=True)
         if stress == '1pk':
@@ -449,7 +453,7 @@ class AortaFEModel:
             Sd=cal_cauchy_stress_from_1pk_stress(Sd, Fd)
             Sv=cal_cauchy_stress_from_1pk_stress(Sv, Fv)            
         else:
-            raise ValueError("unknown stress:"+str(stress))
+            raise ValueError('unknown stress:'+str(stress))
 
         if local_sys == True:
             #orientation.shape (M,3,3)

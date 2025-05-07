@@ -1,17 +1,23 @@
 import torch
 from torch.linalg import cross
 from torch.linalg import vector_norm as norm
-def cal_element_orientation(node, element):
+def cal_element_orientation(node, element):    
+    #element_orientation is only avaiable for hex8 elements
     if element.shape[1] == 4: #tet4
-        raise ValueError("only support hex8")
+        #raise ValueError('only support hex8')
+        ori=torch.eye(3,3).expand(len(element),3,3)
     elif element.shape[1] == 10: #tet10
-        raise ValueError("only support hex8")
+        #raise ValueError('only support hex8')
+        ori=torch.eye(3,3).expand(len(element),3,3)
     elif element.shape[1] == 6: #wedge6
-        raise ValueError("only support hex8")
+        #raise ValueError('only support hex8')
+        ori=torch.eye(3,3).expand(len(element),3,3)
     elif element.shape[1] == 8:
         ori=cal_element_orientation_hex8(node, element)
     else:
-        raise ValueError("unsupported element type")
+        #raise ValueError('unsupported element type')
+        ori=torch.eye(3,3).expand(len(element),3,3)
+    ori=ori.to(node.dtype).to(node.device)
     return ori
 
 def cal_element_orientation_hex8(node, element):
