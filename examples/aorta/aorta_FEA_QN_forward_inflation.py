@@ -4,9 +4,9 @@ import os
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 import sys
 #note: change the following three lines if necessary
-sys.path.append('/data0/MLFEA/code/pytorch_fea')
-sys.path.append('/data0/MLFEA/code/pytorch_fea/examples/aorta')
-sys.path.append('/data0/MLFEA/code/mesh')
+sys.path.append('../../../pytorch_fea')
+sys.path.append('../../../pytorch_fea/examples/aorta')
+sys.path.append('../../../mesh')
 import numpy as np
 from IPython import display
 import matplotlib.pyplot as plt
