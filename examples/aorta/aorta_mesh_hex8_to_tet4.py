@@ -3,10 +3,10 @@ import sys
 sys.path.append("../../../pytorch_fea")
 sys.path.append("../../../pytorch_fea/examples/aorta")
 sys.path.append("../../../pytorch_fea/data/aorta")
-sys.path.append("../../../mesh")
+sys.path.append('../../../pytorch_fea_mesh')
 #%%
 import torch
-from PolyhedronMesh import PolyhedronMesh
+from torch_fea_mesh.processing.polyhedron_mesh_processing import PolyhedronMesh
 from aorta_element_orientation import cal_element_orientation_hex8
 #%%
 def hex8_to_tet4(element_hex8):

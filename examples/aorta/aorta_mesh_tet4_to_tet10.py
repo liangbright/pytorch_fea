@@ -3,11 +3,10 @@ import sys
 sys.path.append("../../../pytorch_fea")
 sys.path.append("../../../pytorch_fea/examples/aorta")
 sys.path.append("../../../pytorch_fea/data/aorta")
-sys.path.append("../../../mesh")
+sys.path.append('../../../pytorch_fea_mesh')
 #%%
 import torch
-from TetrahedronMesh import TetrahedronMesh
-from PolyhedronMesh import PolyhedronMesh
+from torch_fea_mesh.processing.polyhedron_mesh_processing import TetrahedronMesh, Tet10Mesh
 from aorta_element_orientation import cal_element_orientation_hex8
 #%%
 path="../../../pytorch_fea/data/aorta"
@@ -185,7 +184,7 @@ boundary0_tet10=torch.tensor(boundary0_tet10, dtype=torch.int64)
 boundary1_tet10=torch.tensor(boundary1_tet10, dtype=torch.int64)
 surface_tet10=torch.tensor(surface_tet10, dtype=torch.int64)
 element_tet10=torch.tensor(element_tet10, dtype=torch.int64)
-aorta_tet10=PolyhedronMesh()
+aorta_tet10=Tet10Mesh()
 aorta_tet10.element=element_tet10
 aorta_tet10.node=torch.cat([node_tet4, node_mid], dim=0)
 aorta_tet10.element_set['Element_surface_pressure']=surface_tet10

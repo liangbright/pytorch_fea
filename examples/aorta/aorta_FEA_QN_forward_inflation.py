@@ -6,14 +6,14 @@ import sys
 #note: change the following three lines if necessary
 sys.path.append('../../../pytorch_fea')
 sys.path.append('../../../pytorch_fea/examples/aorta')
-sys.path.append('../../../mesh')
+sys.path.append('../../../pytorch_fea_mesh')
 import numpy as np
 from IPython import display
 import matplotlib.pyplot as plt
 import torch
 from torch.linalg import det
 from torch_fea.utils.functions import cal_attribute_on_node, cal_von_mises_stress
-from PolyhedronMeshProcessing import TetrahedronMesh, Tet10Mesh, HexahedronMesh
+from torch_fea_mesh.processing.polyhedron_mesh_processing import TetrahedronMesh, Tet10Mesh, HexahedronMesh
 import time
 #%% use the example data
 try:

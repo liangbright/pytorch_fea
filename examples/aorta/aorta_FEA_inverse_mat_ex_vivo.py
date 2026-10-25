@@ -3,22 +3,22 @@
 import os
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 import sys
-sys.path.append("../../../pytorch_fea")
-sys.path.append("../../../pytorch_fea/examples/aorta")
-sys.path.append("../../../mesh")
+sys.path.append('../../../pytorch_fea')
+sys.path.append('../../../pytorch_fea/examples/aorta')
+sys.path.append('../../../pytorch_fea_mesh')
 import numpy as np
 from IPython import display
 import matplotlib.pyplot as plt
 import torch
 from torch_fea.optimizer.FE_lbfgs_ori import LBFGS
-from PolyhedronMeshProcessing import TetrahedronMesh, Tet10Mesh, HexahedronMesh
+from torch_fea_mesh.processing.polyhedron_mesh_processing import TetrahedronMesh, Tet10Mesh, HexahedronMesh
 import time
 #%%
 #attention:
 #    run aorta_FEA_forward_inflation.py to generate mesh_px
 #    mat_model for inverse_mat should be the same as the mat_model for inflation
-all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt')['mat_str']
-matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt')['mean_mat_str']
+all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mat_str']
+matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mean_mat_str']
 mat_true=matMean
 mat_name='matMean'
 px_pressure=16
