@@ -18,9 +18,15 @@ from torch_fea.utils.functions import cal_attribute_on_node, cal_von_mises_stres
 from torch_fea_mesh.processing.polyhedron_mesh_processing import TetrahedronMesh, Tet10Mesh, HexahedronMesh
 import time
 #%%
+try:
+    all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mat_str']
+    matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mean_mat_str']
+except:
+    pass
 px_pressure=16
 mat_model='GOH_Jv'
 mat_str='10000, 0, 1, 0.3333, 0, 1e5'; mat_name='1e4'
+#mat_str=matMean; mat_name='matMean'
 shape_id='171' #[24,150,168,171,174,192,318]
 element_type_str='hex8'  #'hex8', 'tet10', 'tet4'
 mesh_p0_str='../../../pytorch_fea/data/aorta/p0_'+str(shape_id)+'_solid'
