@@ -50,7 +50,7 @@ class AutoStepper:
     def initialize_retry(self, max_retry=None):
         if max_retry is not None:
             self.max_retry=max_retry
-        if self.Δt > self.Δt_min:
+        if 0.99*self.Δt > self.Δt_min: #else no smaller step is left, as when Δt is Δt_min
             self.Δt_list=np.logspace(np.log10(0.99*self.Δt), np.log10(self.Δt_min), self.max_retry).tolist()
         else:
             self.Δt_list=np.logspace(np.log10(self.Δt_max), np.log10(self.Δt_min), self.max_retry).tolist()
