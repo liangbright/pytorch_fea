@@ -56,7 +56,8 @@ Thumbs.db
 *.zip
 
 # folders
-data/
+data/*
+!data/data_record.json
 result/
 
 #lock file for ppt
