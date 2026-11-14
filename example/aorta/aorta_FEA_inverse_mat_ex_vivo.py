@@ -3,9 +3,11 @@
 import os
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 import sys
-sys.path.append('../../../pytorch_fea')
-sys.path.append('../../../pytorch_fea/example/aorta')
-sys.path.append('../../../pytorch_fea_mesh')
+from pathlib import Path
+parent_dir = str(Path(__file__).resolve().parents[3])
+sys.path.append(parent_dir+'/pytorch_fea')
+sys.path.append(parent_dir+'/pytorch_fea/example/aorta')
+sys.path.append(parent_dir+'/pytorch_fea_mesh')
 import numpy as np
 from IPython import display
 import matplotlib.pyplot as plt
@@ -17,8 +19,8 @@ import time
 #attention:
 #    run aorta_FEA_forward_inflation.py to generate mesh_px
 #    mat_model for inverse_mat should be the same as the mat_model for inflation
-all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mat_str']
-matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mean_mat_str']
+all_mat=torch.load(parent_dir+'/pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mat_str']
+matMean=torch.load(parent_dir+'/pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mean_mat_str']
 px_pressure=16
 mat_model='GOH' #'GOH', 'UFD', or 'NeoHookean'
 if mat_model == 'GOH':
@@ -36,12 +38,12 @@ else:
     raise ValueError('unknown mat_model: '+mat_model)
 shape_id='171' #[24,150,168,171,174,192,318]
 element_type_str='hex8'
-mesh_p0_str='../../../pytorch_fea/data/aorta/p0_'+str(shape_id)+'_solid'
+mesh_p0_str=parent_dir+'/pytorch_fea/data/aorta/p0_'+str(shape_id)+'_solid'
 if element_type_str != 'hex8':
     mesh_p0_str=mesh_p0_str+'_'+element_type_str
-mesh_px_str=('../../../pytorch_fea/example/aorta/result/inflation/'
+mesh_px_str=(parent_dir+'/pytorch_fea/example/aorta/result/inflation/'
              +'p0_'+str(shape_id)+'_solid_'+element_type_str+'_'+mat_model+'_'+mat_name+'_p'+str(px_pressure))
-folder_result='../../../pytorch_fea/example/aorta/result/inverse_mat_ex_vivo'
+folder_result=parent_dir+'/pytorch_fea/example/aorta/result/inverse_mat_ex_vivo'
 #%%
 import argparse
 parser = argparse.ArgumentParser(description='Input Parameters:')

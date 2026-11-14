@@ -58,7 +58,8 @@ Thumbs.db
 # folders
 data/*
 !data/data_record.json
-result/
+result/*
+.vscode/*
 
 #lock file for ppt
 *.~lock*

@@ -5,10 +5,11 @@
 import os
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 import sys
-#note: change the following three lines if necessary
-sys.path.append('../../../pytorch_fea')
-sys.path.append('../../../pytorch_fea/example/aorta')
-sys.path.append('../../../pytorch_fea_mesh')
+from pathlib import Path
+parent_dir = str(Path(__file__).resolve().parents[3])
+sys.path.append(parent_dir+'/pytorch_fea')
+sys.path.append(parent_dir+'/pytorch_fea/example/aorta')
+sys.path.append(parent_dir+'/pytorch_fea_mesh')
 import numpy as np
 from IPython import display
 import matplotlib.pyplot as plt
@@ -18,8 +19,8 @@ from torch_fea.utility.function import cal_attribute_on_node, cal_von_mises_stre
 from torch_fea_mesh.processing.polyhedron_mesh_processing import TetrahedronMesh, Tet10Mesh, HexahedronMesh
 import time
 #%% use the example data
-all_mat=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mat_str']
-matMean=torch.load('../../../pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mean_mat_str']
+all_mat=torch.load(parent_dir+'/pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mat_str']
+matMean=torch.load(parent_dir+'/pytorch_fea/data/aorta/125mat.pt', weights_only=False)['mean_mat_str']
 px_pressure=16
 mat_model='GOH' #'GOH', 'UFD', or 'NeoHookean'
 if mat_model == 'GOH':
