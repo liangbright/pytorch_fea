@@ -23,4 +23,14 @@ inverse analysis:
 > (3) aorta_FEA_QN_GPA_prestress.py to obtain stress and strain of pressurized geometry given material parameters. \
 > note: residual stress/strain is not considered
 
-Dependency: PyTorch, PyTorch Geometric, and PyPardiso
+Dependencies:
+- PyTorch
+- NumPy and SciPy
+- torch-scatter and torch-sparse, built for your PyTorch and CUDA versions (wheels at https://data.pyg.org/whl/); PyTorch Geometric itself is not needed
+- PyPardiso (https://github.com/haasad/PyPardiso): the sparse linear solver on the CPU (it needs Intel MKL)
+- the mesh library pytorch_fea_mesh (see above), with its own dependencies
+- optional, the sparse linear solver on the GPU (cuDSS, torch_fea/optimizer/cuDSS_linear_sparse_solver.py): nvmath-python and cuDSS, e.g. pip install nvmath-python "nvidia-cudss-cu13==0.8.*"
+- for the examples: Matplotlib and IPython
+
+Tested with Python 3.14.10, PyTorch 2.12.1 (CUDA 13.2), NumPy 2.5.4, SciPy 1.18.1, torch-scatter 2.1.2, torch-sparse 0.6.18, PyPardiso 0.4.7,
+nvmath-python 1.0.0 with nvidia-cudss-cu13 0.8.0.10 and cuda-core 1.2.2, Matplotlib 3.11.2, IPython 9.17.1
