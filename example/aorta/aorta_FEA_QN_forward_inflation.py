@@ -49,7 +49,7 @@ def get_must_points(delta):
     while t<1:
         n=n+1
         t=delta*n
-        ts='{:.2f}'.format(t)
+        ts=f'{t:.2f}'
         t_str=t_str+','+ts
     return t_str
 #pressure=20, delta=0.05: 20 must points
@@ -126,7 +126,7 @@ boundary1=Mesh_X.node_set['boundary1']
 Element_surface_pressure=Mesh_X.element_set['Element_surface_pressure']
 try:
     ElementOrientation=Mesh_X.element_data['orientation'].view(-1,3,3)
-except:
+except Exception as __:
     ElementOrientation=None
 #%%
 from AortaFEModel import AortaFEModel, cal_potential_energy
@@ -511,7 +511,7 @@ while iter1 <= max_iter1:
             print('  reform_stiffness_counter', reform_stiffness_counter, 'tab', tab, 'tab_total', tab_total)
             break
 
-        #flag_linesearch < 0 very often
+        #flag_linesearch < 0 very often using FE_lbfgs_ori optimizer
         #it is possible that TPE increases and loss1 (Rmax) decreases, so flag < 0
         #if flag_linesearch < 0:
         #    reform_stiffness_flag=1

@@ -639,17 +639,59 @@ class AortaFEModel:
         V=cal_integration_point_volume(state['element_type'], det_dX_dr, state['F0'])
         S, W=self.cal_1pk_stress(F, state['material'], orientation, create_graph=create_graph, return_W=True, V=V)
         if stress == '1pk':
-            pass
+            if state['F0'] is not None:
+                #S=dW/dF with F=Fu*F0 is the 1PK stress of the stress-free state (force per unit area of that state);
+                #the 1PK stress of node_X (force per unit area of node_X, the stress that the internal force is
+                #integrated with in cal_1pk_stress_force) is S*F0^T/det(F0) = det(Fu)*sigma*Fu^-T, Fu=dx/dX
+                S=matmul(S, state['F0'].transpose(-1,-2))/torch.linalg.det(state['F0'])[...,None,None]
         elif stress == 'cauchy':
             S=cal_cauchy_stress_from_1pk_stress(S, F)
         else:
             raise ValueError('unknown stress:'+str(stress))
 
         if local_sys == True:
-            #orientation.shape (M,3,3)
-            orientation=orientation.view(-1,1,3,3)
-            orientation_t=orientation.permute(0,1,3,2)
-            S=matmul(matmul(orientation_t, S), orientation)
+            #the stress components in the local axes of each element, instead of the global x, y, z axes
+            #ori_X=orientation, shape (M,3,3): one set of local axes per element, on the undeformed geometry node_X
+            #  (computed from node_X by cal_element_orientation, or given); its columns e1, e2, e3 are unit vectors;
+            #  for hex8, e1 circumferential, e2 axial, e3 radial (normal to the wall)
+            #the stress is on the deformed geometry node_x, where these directions have moved with the material,
+            #so the axes are first moved to node_x, at each integration point: ori_x, shape (M,K,3,3)
+            #  e1 along Fu*e1 (the deformed circumferential material line)
+            #  e3 along (Fu*e1) x (Fu*e2) (normal to the deformed wall)
+            #  e2=e3 x e1
+            #  this is the rule of cal_element_orientation_hex8, applied to the deformed directions
+            #  Fu=dx/dX, without F0: ori_X is on node_X, and F0 maps to node_X (F=Fu*F0)
+            #  ori_x is not ori_X turned by the rotation of the polar decomposition of Fu, which would not keep e1
+            #  on the deformed material line nor e3 normal to the deformed wall
+            #Cauchy stress, both legs on node_x: ori_x^T*sigma*ori_x
+            #1PK stress of node_X (see above), first leg on node_x and second leg on node_X: ori_x^T*P*ori_X
+            #for tet4, tet10 and wedge6, cal_element_orientation gives the global axes, not axes of the wall
+            if state['F0'] is None:
+                Fu=F
+            else:
+                #Fu=dx/dX at the integration points, cal_F_tensor without F0
+                if self.mode == 'inverse_p0':
+                    d_sf_dX=None
+                else:
+                    d_sf_dX=state['d_sf_dX']
+                Fu=cal_F_tensor(state['element_type'], node_x, state['element'], node_X,
+                                state['n_integration_points_solid'], d_sf_dX, None)
+            ori_X=orientation.view(orientation.shape[0],1,3,3).expand(Fu.shape)
+            a=matmul(Fu, ori_X[...,0:1])[...,0]
+            d=matmul(Fu, ori_X[...,1:2])[...,0]
+            e1=a/torch.linalg.vector_norm(a, dim=-1, keepdim=True)
+            e3=torch.linalg.cross(a, d, dim=-1)
+            e3=e3/torch.linalg.vector_norm(e3, dim=-1, keepdim=True)
+            e2=torch.linalg.cross(e3, e1, dim=-1)
+            ori_x=torch.stack([e1, e2, e3], dim=-1) #shape (M,K,3,3)
+            if create_graph == False:
+                ori_x=ori_x.detach()
+                ori_X=ori_X.detach()
+            ori_x_t=ori_x.permute(0,1,3,2)
+            if stress == 'cauchy':
+                S=matmul(matmul(ori_x_t, S), ori_x)
+            else:
+                S=matmul(matmul(ori_x_t, S), ori_X)
 
         if return_W == False:
             return S
