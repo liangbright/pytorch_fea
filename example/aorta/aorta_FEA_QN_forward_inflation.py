@@ -249,8 +249,7 @@ def save(is_final_result=False):
         state['t_save'].append(t_good)
     u_field=aorta_model.get_u_field()
     Node_x=Node_X+u_field
-    S=aorta_model.cal_stress('cauchy', create_graph=False, return_W=False)
-    S_element=S.mean(dim=1)
+    S_element=aorta_model.cal_average_stress_in_element('cauchy', create_graph=False)
     VM_element=cal_von_mises_stress(S_element)
     S_node=cal_attribute_on_node(Node_x.shape[0], Element, S_element)
     VM_node=cal_von_mises_stress(S_node)

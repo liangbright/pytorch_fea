@@ -1,14 +1,21 @@
 # C3D10 in Abaqus, TET10 in FEBio
 #
-# Integration rules: 1 point, 4 points (exact up to degree 2) and 8 points (exact up to degree 3); the aorta example
-# uses 8. The numbers are given here to full double precision, the same as in solid_element_tet5.py and
-# solid_element_tet15.py:
+# Integration rules: 1 point, 4 points (exact up to degree 2), 8 points (exact up to degree 3), 14 points (exact up to
+# degree 5) and 35 points (exact up to degree 7); the aorta example uses 8. The numbers are given here to full double
+# precision, the same as in solid_element_tet5.py and solid_element_tet15.py:
 #   4 points: (a,b,b), (b,a,b), (b,b,a) and (b,b,b), each with the weight 1/24, where a=(5+3*sqrt(5))/20 and
 #     b=(5-sqrt(5))/20.
 #   8 points: (a,b,b), (b,a,b), (b,b,a), (b,b,b) with the weight w1 and (c,d,d), (d,c,d), (d,d,c), (d,d,d) with the
 #     weight w2. The rules of this form that are exact up to degree 3 make a family with one free parameter (any b
 #     near 0.328 gives one). The numbers here, from solid_element_tet15.py, are the one closest to FEBio's numbers
 #     (within 3e-10).
+#   14 and 35 points: both fully symmetric (unchanged by the 24 permutations of the volume coordinates), with all
+#     weights positive and all points strictly inside the element. 14 points (orbits 2 x S31 + S22) are exact for the
+#     mass of a straight-sided tet10 (degree 4) and for the body force of a curved one (degree 5); 35 points (orbits
+#     S4 + S31 + S22 + 2 x S211) are exact for the mass of a curved tet10 (degree 7). They were computed on 2026-11-17
+#     in the implicit_dynamic project by solving the moment equations; they are not from FEBio or from a published
+#     table. Their numbers are in get_integration_point_14i, get_integration_weight_14i, get_integration_point_35i
+#     and get_integration_weight_35i below.
 # Until 2026-11-12 this file had FEBio's numbers (FECore/FEElementTraits.cpp), with 8 to 10 digits:
 #   4 points (as FETet4G4): a=0.58541020, b=0.13819660;
 #   8 points (FETet10G8): a=0.0158359099, b=0.3280546970, c=0.6791431780, d=0.1069522740,
@@ -22,6 +29,7 @@
 # shape function:
 #    https://github.com/febiosoftware/FEBio/blob/49f0976c640a8f0d0a36ff3251b6cba045f8c613/FECore/FESolidElementShape.cpp
 #%%
+import itertools
 import torch
 import torch_fea.element.solid_element_shared as shared
 from torch import matmul
@@ -82,28 +90,6 @@ def get_integration_weight_8i(dtype, device):
     if dtype is not None and device is not None:
         w=torch.tensor(w, dtype=dtype, device=device) #w.shape (8,)
     return w
-#%% integration point location
-def get_integration_point(n_points, dtype, device):
-    #return: r, r.shape (n_points,3); a list of the points when dtype or device is None
-    if n_points==1:
-        return get_integration_point_1i(dtype, device)
-    elif n_points==4:
-        return get_integration_point_4i(dtype, device)
-    elif n_points==8:
-        return get_integration_point_8i(dtype, device)
-    else:
-        raise ValueError("n_points must be 1 or 4 or 8")
-#%% gaussian integration weight
-def get_integration_weight(n_points, dtype, device):
-    #return: w, w.shape (n_points,); a list of the weights when dtype or device is None
-    if n_points == 1:
-        return get_integration_weight_1i(dtype, device)
-    elif n_points == 4:
-        return get_integration_weight_4i(dtype, device)
-    elif n_points == 8:
-        return get_integration_weight_8i(dtype, device)
-    else:
-        raise ValueError("n_points must be 1 or 4 or 8")
 #%% useful for 9.15c in the book
 def get_shape_integration_weight_1i(dtype, device):
     #wij: shape_function_i_at_integration_point_j * integration_weight_at_j
@@ -151,7 +137,116 @@ def get_shape_integration_weight_8i(dtype, device):
         weight=torch.tensor(weight, dtype=dtype, device=device)
         weight=weight.view(10,8)
     return weight
+#%% exact rules for the tet10 mass and body force: fully symmetric (invariant under the 24 permutations of the
+#volume coordinates), all weights positive, all points inside the element
+#  14 points: exact up to degree 5 (enough for the mass of a straight-sided tet10, degree 4, and for the body force of
+#             a curved one, degree 5)
+#  35 points: exact up to degree 7 (enough for the mass of a curved tet10, degree 7)
+#get_integration_point_14i and _35i: one point of each orbit, by its volume coordinates (L0, L1, L2, L3); the orbit's
+#points are the distinct permutations of the four coordinates. r = (L1, L2, L3), as sf0 uses L0 = 1-r[0]-r[1]-r[2].
+#get_integration_weight_14i and _35i: the weight per point of each orbit, as a fraction of the element volume, divided
+#by 6 for the unit reference tetrahedron (volume 1/6).
+#Computed 2026-11-17 by solving the moment equations (implicit_dynamic/tet10_15_integration_point.md).
+def expand_orbits(orbits):
+    #orbits: a list of the volume coordinates (L0, L1, L2, L3) of one point of each orbit
+    #return: r, a list of [r0, r1, r2]: the points of each orbit in turn, the distinct permutations of its coordinates
+    r=[]
+    for L in orbits:
+        for p in sorted(set(itertools.permutations(L))):
+            r.append([p[1], p[2], p[3]])
+    return r
+#%% integration point location
+def get_integration_point_14i(dtype, device):
+    #orbits S31, S31 and S22: 4, 4 and 6 points
+    orbits=[(0.09273525031089122, 0.09273525031089122, 0.09273525031089122, 0.7217942490673264),
+            (0.3108859192633006, 0.3108859192633006, 0.3108859192633006, 0.06734224221009817),
+            (0.04550370412564965, 0.04550370412564965, 0.45449629587435036, 0.45449629587435036)]
+    r=expand_orbits(orbits)
+    if dtype is not None and device is not None:
+        r=torch.tensor(r, dtype=dtype, device=device) #r.shape (14, 3)
+    return r
+#%% gaussian integration weight
+def get_integration_weight_14i(dtype, device):
+    #the weight per point of each orbit of get_integration_point_14i, in the same order
+    w1=0.07349304311636196/6 #orbit S31, 4 points
+    w2=0.11268792571801585/6 #orbit S31, 4 points
+    w3=0.042546020777081466/6 #orbit S22, 6 points
+    w=[w1, w1, w1, w1, w2, w2, w2, w2, w3, w3, w3, w3, w3, w3]
+    if dtype is not None and device is not None:
+        w=torch.tensor(w, dtype=dtype, device=device) #w.shape (14,)
+    return w
+#%% integration point location
+def get_integration_point_35i(dtype, device):
+    #orbits S4, S31, S22, S211 and S211: 1, 4, 6, 12 and 12 points
+    orbits=[(0.25, 0.25, 0.25, 0.25),
+            (0.3157011497782028, 0.3157011497782028, 0.3157011497782028, 0.0528965506653916),
+            (0.05048982259839637, 0.05048982259839637, 0.44951017740160365, 0.44951017740160365),
+            (0.18883383102600104, 0.18883383102600104, 0.047160700360997884, 0.5751716375870001),
+            (0.021265472541483248, 0.021265472541483248, 0.14663881381848495, 0.8108302410985485)]
+    r=expand_orbits(orbits)
+    if dtype is not None and device is not None:
+        r=torch.tensor(r, dtype=dtype, device=device) #r.shape (35, 3)
+    return r
+#%% gaussian integration weight
+def get_integration_weight_35i(dtype, device):
+    #the weight per point of each orbit of get_integration_point_35i, in the same order
+    w1=0.09548528946413085/6 #orbit S4, 1 point
+    w2=0.04232958120996703/6 #orbit S31, 4 points
+    w3=0.03189692783285758/6 #orbit S22, 6 points
+    w4=0.03720713072833462/6 #orbit S211, 12 points
+    w5=0.008110770829903342/6 #orbit S211, 12 points
+    w=[w1,
+       w2, w2, w2, w2,
+       w3, w3, w3, w3, w3, w3,
+       w4, w4, w4, w4, w4, w4, w4, w4, w4, w4, w4, w4,
+       w5, w5, w5, w5, w5, w5, w5, w5, w5, w5, w5, w5]
+    if dtype is not None and device is not None:
+        w=torch.tensor(w, dtype=dtype, device=device) #w.shape (35,)
+    return w
 #%%
+def get_shape_integration_weight_from_rule(r, a, dtype, device):
+    #wij: shape_function_i_at_integration_point_j * integration_weight_at_j
+    #return: weight, weight.shape (10,K); a list of its numbers when dtype or device is None
+    sf=[sf0, sf1, sf2, sf3, sf4, sf5, sf6, sf7, sf8, sf9]
+    K=len(r)
+    weight=[sf[i](r[j])*a[j] for i in range(10) for j in range(K)]
+    if dtype is not None and device is not None:
+        weight=torch.tensor(weight, dtype=dtype, device=device)
+        weight=weight.view(10,K)
+    return weight
+def get_shape_integration_weight_14i(dtype, device):
+    return get_shape_integration_weight_from_rule(get_integration_point_14i(None, None), get_integration_weight_14i(None, None), dtype, device)
+def get_shape_integration_weight_35i(dtype, device):
+    return get_shape_integration_weight_from_rule(get_integration_point_35i(None, None), get_integration_weight_35i(None, None), dtype, device)
+#%% the three dispatchers, replacing the existing ones
+def get_integration_point(n_points, dtype, device):
+    #return: r, r.shape (n_points,3); a list of the points when dtype or device is None
+    if n_points==1:
+        return get_integration_point_1i(dtype, device)
+    elif n_points==4:
+        return get_integration_point_4i(dtype, device)
+    elif n_points==8:
+        return get_integration_point_8i(dtype, device)
+    elif n_points==14:
+        return get_integration_point_14i(dtype, device)
+    elif n_points==35:
+        return get_integration_point_35i(dtype, device)
+    else:
+        raise ValueError("n_points must be 1, 4, 8, 14 or 35")
+def get_integration_weight(n_points, dtype, device):
+    #return: w, w.shape (n_points,); a list of the weights when dtype or device is None
+    if n_points == 1:
+        return get_integration_weight_1i(dtype, device)
+    elif n_points == 4:
+        return get_integration_weight_4i(dtype, device)
+    elif n_points == 8:
+        return get_integration_weight_8i(dtype, device)
+    elif n_points == 14:
+        return get_integration_weight_14i(dtype, device)
+    elif n_points == 35:
+        return get_integration_weight_35i(dtype, device)
+    else:
+        raise ValueError("n_points must be 1, 4, 8, 14 or 35")
 def get_shape_integration_weight(n_points, dtype, device):
     #return: weight, weight.shape (10,n_points); a list of its numbers when dtype or device is None
     if n_points==1:
@@ -160,8 +255,12 @@ def get_shape_integration_weight(n_points, dtype, device):
         return get_shape_integration_weight_4i(dtype, device)
     elif n_points==8:
         return get_shape_integration_weight_8i(dtype, device)
+    elif n_points==14:
+        return get_shape_integration_weight_14i(dtype, device)
+    elif n_points==35:
+        return get_shape_integration_weight_35i(dtype, device)
     else:
-        raise ValueError("n_points must be 1 or 4 or 8")
+        raise ValueError("n_points must be 1, 4, 8, 14 or 35")
 #%% shape function 0
 def sf0(r):
     #r.shape (3,...): r[0], r[1], r[2] are numbers or tensors of one shape
@@ -377,7 +476,7 @@ def cal_F_tensor_with_d_sf_dX(x, d_sf_dX):
     #d_sf_dX.shape is (M,K,3,10), from cal_d_sf_dh
     F=shared.cal_F_tensor_with_d_sf_dX(x, d_sf_dX)
     return F #(M,K,3,3)
-#%% K integration points, K = 1 or 4 or 8
+#%% K integration points, K = 1, 4, 8, 14 or 35
 def cal_nodal_force_from_cauchy_stress(S, d_sf_dx, det_dx_dr):
     #r=get_integration_point(K, dtype, device), r.shape is (K,3)
     #F=cal_F_tensor(...) on the integration points, F.shape is (M,K,3,3)
@@ -391,7 +490,7 @@ def cal_nodal_force_from_cauchy_stress(S, d_sf_dx, det_dx_dr):
     weight=get_integration_weight(det_dx_dr.shape[1], S.dtype, torch.device("cpu"))
     force=shared.cal_nodal_force_from_cauchy_stress(S, d_sf_dx, det_dx_dr, weight)
     return force #(M,10,3)
-#%% K integration points, K = 1 or 4 or 8
+#%% K integration points, K = 1, 4, 8, 14 or 35
 def cal_nodal_force_from_2pk_stress(F, S, d_sf_dX, det_dX_dr):
     #r=get_integration_point(K, dtype, device), r.shape is (K,3)
     #F=cal_F_tensor(...) on the integration points, F.shape is (M,K,3,3)
@@ -405,7 +504,7 @@ def cal_nodal_force_from_2pk_stress(F, S, d_sf_dX, det_dX_dr):
     weight=get_integration_weight(det_dX_dr.shape[1], S.dtype, torch.device("cpu"))
     force=shared.cal_nodal_force_from_2pk_stress(F, S, d_sf_dX, det_dX_dr, weight)
     return force #(M,10,3)
-#%% K integration points, K = 1 or 4 or 8
+#%% K integration points, K = 1, 4, 8, 14 or 35
 def cal_nodal_force_from_1pk_stress(S, d_sf_dX, det_dX_dr):
     #r=get_integration_point(K, dtype, device), r.shape is (K,3)
     #F=cal_F_tensor(...) on the integration points, F.shape is (M,K,3,3)
@@ -420,7 +519,7 @@ def cal_nodal_force_from_1pk_stress(S, d_sf_dX, det_dX_dr):
     weight=get_integration_weight(det_dX_dr.shape[1], S.dtype, torch.device("cpu"))
     force=shared.cal_nodal_force_from_1pk_stress(S, d_sf_dX, det_dX_dr, weight)
     return force #(M,10,3)
-#%% K integration points, K = 1 or 4 or 8
+#%% K integration points, K = 1, 4, 8, 14 or 35
 def cal_nodal_force_from_body_force(body_force, density, det_dX_dr):
     #body_force: force per unit mass, shape (3,) or (M,K,3) at the integration points
     #density: density of the undeformed element, a number or a tensor of shape (M,1)
@@ -431,7 +530,7 @@ def cal_nodal_force_from_body_force(body_force, density, det_dX_dr):
     weight=get_shape_integration_weight(det_dX_dr.shape[1], det_dX_dr.dtype, det_dX_dr.device) #(10,K)
     force=shared.cal_nodal_force_from_body_force(body_force, density, det_dX_dr, weight)
     return force #(M,10,3)
-#%% K integration points, K = 1 or 4 or 8, the strain energy of each element
+#%% K integration points, K = 1, 4, 8, 14 or 35, the strain energy of each element
 def cal_strain_energy(W, det_dX_dr):
     #W.shape (M,K)
     #det_dX_dr.shape (M,K,1,1)

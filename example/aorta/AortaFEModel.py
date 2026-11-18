@@ -103,8 +103,10 @@ def process_H_gpu(H, free_node):
 #%%
 class AortaFEModel:
     def __init__(self, element_type, node_x, element, node_X, boundary0, boundary1, pressure_surface,
-                 material, element_orientation, cal_1pk_stress, dtype, device, mode):
+                 material, element_orientation, cal_1pk_stress, dtype, device, mode, n_integration_points_solid=None):
         #element_type: 'tet4', 'tet10', 'wedge6', or 'hex8'
+        #n_integration_points_solid: None for the default of element_type; for tet10 it can be 4, 8 (the default), 14 or
+        #  35 (solid_element_tet10.py: 14 points are exact for the mass of a straight-sided tet10, 35 for a curved one)
         #device: also where the stiffness matrix H (return_stiffness='sparse') is built and solved, see process_H
         #mode: 'inflation'   to get node_x,   given node_X and material
         #      'inverse_p0'  to get node_X,   given node_x and material
@@ -122,7 +124,7 @@ class AortaFEModel:
             self.state['n_integration_points_solid']=1
             self.state['n_integration_points_surface']=3    # tri3 faces: FEBio's pressure-load default (FE_TRI3G3)
         elif element_type == 'tet10':
-            self.state['n_integration_points_solid']=8    # 8(slow) or 4(fast)
+            self.state['n_integration_points_solid']=8    # the default; n_integration_points_solid can set 4 (fast), 8, 14 or 35
             self.state['n_integration_points_surface']=7    # tri6 faces: FEBio's pressure-load default (FE_TRI6G7)
         elif element_type == 'wedge6':
             self.state['n_integration_points_solid']=6    # as FEBio (FEPenta6G6); with 2, one element alone has a spurious zero-energy mode
@@ -132,6 +134,12 @@ class AortaFEModel:
             self.state['n_integration_points_surface']=4    # quad4 faces: FEBio's pressure-load default (FE_QUAD4G4)
         else:
             raise ValueError('only support tet4, tet10, wedge6, and hex8')
+        if n_integration_points_solid is not None:
+            if element_type != 'tet10':
+                raise ValueError('n_integration_points_solid can be set only for tet10')
+            if n_integration_points_solid not in (4, 8, 14, 35):
+                raise ValueError('n_integration_points_solid of tet10 must be 4, 8, 14 or 35')
+            self.state['n_integration_points_solid']=n_integration_points_solid
         self.state['node_x']=node_x
         self.state['element']=element
         self.state['node_X']=node_X
@@ -697,4 +705,35 @@ class AortaFEModel:
             return S
         else:
             return S, W
+
+    def cal_average_stress_in_element(self, stress, create_graph=False, local_sys=False):
+        #the average stress of each element: the mean of the stress over the integration points of the element, each
+        #point weighted by its volume
+        #  'cauchy': its volume on the deformed geometry node_x, w_k*det(dX/dr)*det(Fu), Fu=dx/dX, so the average is
+        #            the integral of the Cauchy stress over the element on node_x divided by the element's volume there
+        #  '1pk':    its volume on node_X, w_k*det(dX/dr), for the 1PK stress of node_X (see cal_stress)
+        #w_k is the integration weight of point k; F0 does not change these volumes: they are on node_x and node_X
+        #an unweighted mean, S.mean(dim=1), is close to this only when the weights w_k*det(dX/dr) are nearly equal, as for
+        #the 8-point rule of tet10; with 14 or 35 points it is not (with 35 points, 12 points near the vertices hold
+        #0.8% of the element's volume each, but would get 12/35 of an unweighted mean)
+        #stress, create_graph, local_sys: as in cal_stress
+        #return: S_element, shape (M,3,3)
+        state=self.state
+        S=self.cal_stress(stress, create_graph=create_graph, return_W=False, local_sys=local_sys)
+        if self.mode == 'inverse_p0':
+            node_X=state['node_x']-self.get_u_field()
+            _, _, det_dX_dr=cal_d_sf_dX_and_dX_dr(state['element_type'], node_X, state['element'],
+                                                  state['n_integration_points_solid'])
+        else:
+            det_dX_dr=state['det_dX_dr']
+        V=cal_integration_point_volume(state['element_type'], det_dX_dr, None) #(M,K): the volume of each point on node_X
+        if stress == 'cauchy':
+            J=torch.linalg.det(self.cal_F_tensor()) #det(Fu*F0)
+            if state['F0'] is not None:
+                J=J/torch.linalg.det(state['F0'])
+            V=V*J.view(V.shape) #the volume of each point on node_x
+        if create_graph == False:
+            V=V.detach()
+        S_element=(S*V[:,:,None,None]).sum(dim=1)/V.sum(dim=1)[:,None,None]
+        return S_element
 

@@ -209,8 +209,7 @@ def save(is_final_result=False):
     #so the stress and F are computed with F0_good, otherwise u_field would be applied twice
     F0_current=aorta_model.get_F0(clone=False)
     aorta_model.set_F0(F0_good)
-    S=aorta_model.cal_stress('cauchy', create_graph=False, return_W=False)
-    S_element=S.mean(dim=1)
+    S_element=aorta_model.cal_average_stress_in_element('cauchy', create_graph=False)
     VM_element=cal_von_mises_stress(S_element)
     S_node=cal_attribute_on_node(Node_x.shape[0], Element, S_element)
     VM_node=cal_von_mises_stress(S_node)
